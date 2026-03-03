@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>硬件项目计划管理看板</title>
+<style>
+:root {
+  --primary:#1a73e8; --primary-dark:#0d47a1; --bg:#f0f2f5;
+  --card:#fff; --border:#e0e0e0; --text:#2c3e50; --muted:#888;
+  --h-bar:36px; --name-w:580px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── topbar ── */
+.topbar{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:0 16px;display:flex;align-items:center;height:48px;gap:12px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:200}
+.topbar h1{font-size:15px;font-weight:700;flex:1;white-space:nowrap}
+.topbar .nav{display:flex;gap:4px}
+.nav-btn{padding:5px 14px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;cursor:pointer;font-size:12px;transition:.2s}
+.nav-btn:hover{background:rgba(255,255,255,.28)}
+.nav-btn.active{background:#fff;color:var(--primary);font-weight:700}
+.topbar .acts{display:flex;gap:8px}
+.btn{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;transition:.2s}
+.btn-green{background:#43a047;color:#fff}.btn-green:hover{background:#388e3c}
+.btn-blue{background:#fff;color:var(--primary)}.btn-blue:hover{background:#e8f0fe}
+.btn-red{background:#e53935;color:#fff}.btn-red:hover{background:#c62828}
+
+/* ── 页面容器 ── */
+.page{display:none;flex:1;overflow:hidden;flex-direction:column}
+.page.active{display:flex}
+
+/* ════ 主视图：左右结构 ════ */
+#page-main{flex-direction:row}
+/* 左侧任务面板 */
+.left-panel{width:var(--name-w);min-width:320px;max-width:900px;display:flex;flex-direction:column;background:var(--card);border-right:2px solid var(--border);flex-shrink:0;resize:horizontal;overflow:auto}
+.left-panel .lp-toolbar{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;background:#fafafa}
+.lp-toolbar input,.lp-toolbar select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none;background:#fff}
+.lp-toolbar input:focus,.lp-toolbar select:focus{border-color:var(--primary)}
+/* 任务列表表头 */
+.task-header{display:flex;align-items:center;height:var(--h-bar);padding:0 6px;background:#263238;color:#fff;font-size:11px;font-weight:600;flex-shrink:0;gap:0;overflow:hidden}
+.task-header .th-idx{width:26px;flex-shrink:0;padding:0 2px}
+.task-header .th-name{flex:1;min-width:120px;padding:0 4px}
+.task-header .th-person{width:58px;flex-shrink:0;padding:0 2px}
+.task-header .th-start{width:82px;flex-shrink:0;padding:0 2px}
+.task-header .th-end{width:82px;flex-shrink:0;padding:0 2px}
+.task-header .th-wd{width:46px;flex-shrink:0;text-align:center;padding:0 2px}
+.task-header .th-pct{width:56px;flex-shrink:0;text-align:center;padding:0 2px}
+/* 任务行滚动区 */
+.task-scroll{flex:1;overflow-y:auto;overflow-x:hidden}
+.task-row{display:flex;align-items:center;height:var(--h-bar);padding:0 6px;border-bottom:1px solid #f0f0f0;cursor:pointer;gap:0;transition:background .15s}
+.task-row:hover{background:#e3f2fd}
+.task-row.selected{background:#bbdefb}
+.task-row.group{background:#eceff1;font-weight:700}
+.task-row.group:hover{background:#cfd8dc}
+.tr-idx{width:26px;font-size:11px;color:var(--muted);flex-shrink:0;text-align:right;padding:0 2px}
+.tr-name{flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;padding:0 4px}
+.tr-name.indent{padding-left:16px}
+.tr-person{width:58px;font-size:11px;color:#1565c0;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.tr-date{width:82px;font-size:11px;color:#546e7a;flex-shrink:0;padding:0 2px;white-space:nowrap}
+.tr-wd{width:46px;font-size:11px;color:#37474f;flex-shrink:0;text-align:center;padding:0 2px}
+.tr-pct{width:56px;flex-shrink:0;padding:0 2px}
+.mini-bar{height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-top:1px}
+.mini-fill{height:100%;border-radius:3px;transition:width .3s}
+.pct-label{font-size:10px;color:var(--muted);text-align:right;line-height:1}
+/* 右侧甘特图 */
+.gantt-toolbar{display:flex;align-items:center;padding:4px 10px;background:#37474f;flex-shrink:0;gap:4px}
+.gtb-btn{padding:2px 8px;border:1px solid #546e7a;background:#455a64;color:#cfd8dc;border-radius:4px;cursor:pointer;font-size:12px;transition:.15s}
+.gtb-btn:hover{background:#546e7a;color:#fff}
+.right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;transition:width .2s}
+.right-panel.collapsed{width:0!important;min-width:0!important;overflow:hidden}
+.gantt-toggle{position:absolute;left:-14px;top:50%;transform:translateY(-50%);z-index:100;width:14px;height:48px;background:#455a64;color:#fff;border:none;cursor:pointer;border-radius:4px 0 0 4px;font-size:11px;display:flex;align-items:center;justify-content:center;opacity:.7;transition:.15s}
+.gantt-toggle:hover{opacity:1;background:#37474f}
+.right-panel-wrap{flex:1;display:flex;position:relative;min-width:0;overflow:hidden}
+.gantt-scroll-wrap{flex:1;overflow:auto;position:relative}
+.gantt-grid{position:relative;min-width:100%}
+/* 甘特表头 */
+.gantt-head{position:sticky;top:0;z-index:50;background:#263238}
+.gantt-head-months{display:flex;height:20px}
+.gantt-head-days{display:flex;height:28px}
+.g-month-cell{background:#263238;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;border-right:1px solid #455a64}
+.g-day-cell{width:16px;min-width:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:#cfd8dc;border-right:1px solid #37474f}
+.g-day-cell .d-num{font-size:9px;line-height:1}
+.g-day-cell .d-week{font-size:8px;opacity:.7}
+.g-day-cell.today{background:#c62828!important;color:#fff}
+.g-day-cell.holiday{background:#f9a825;color:#333}
+.g-day-cell.weekend{background:#455a64}
+.g-day-cell.workday-extra{background:#4caf50;color:#fff}
+/* 甘特行 */
+.gantt-rows{position:relative}
+.gantt-row{display:flex;align-items:center;height:var(--h-bar);border-bottom:1px solid #f0f0f0;position:relative}
+.gantt-row.group{background:#eceff1}
+.gantt-row:hover{background:#e3f2fd}
+.gantt-row.selected{background:#bbdefb}
+.g-cell{width:16px;min-width:16px;height:100%;border-right:1px solid #f5f5f5;flex-shrink:0}
+.g-cell.weekend-bg{background:#fafafa}
+.g-cell.holiday-bg{background:#fffde7}
+.g-cell.today-col{background:rgba(198,40,40,.07)}
+.g-cell.workday-extra-bg{background:#f1f8e9}
+/* 甘特条 */
+.g-bar{position:absolute;height:16px;top:50%;transform:translateY(-50%);border-radius:4px;pointer-events:none}
+.g-bar-task{background:#1e88e5}
+.g-bar-done{background:#43a047}
+.g-bar-group{background:#37474f;height:10px;border-radius:2px}
+.g-bar-label{position:absolute;font-size:10px;color:#fff;left:4px;top:50%;transform:translateY(-50%);white-space:nowrap;overflow:hidden;pointer-events:none}
+
+/* ════ 分析页 ════ */
+#page-stats{overflow-y:auto;padding:20px 24px;gap:16px;flex-wrap:wrap;flex-direction:row;align-content:flex-start;background:var(--bg)}
+.stat-card{background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08);flex:1;min-width:320px}
+.stat-card h3{font-size:13px;color:#455a64;margin-bottom:14px;font-weight:700}
+.bar-row{margin-bottom:12px}
+.bar-row .br-label{display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px}
+.bar-track{height:10px;background:#e0e0e0;border-radius:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;transition:width .4s}
+
+/* ════ 假期管理页 ════ */
+#page-holiday{overflow-y:auto;padding:16px 20px;flex-direction:column;gap:12px}
+.hol-header{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hol-header h3{font-size:13px;color:#455a64;font-weight:700;margin-right:auto}
+.year-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.year-tab{padding:4px 12px;border:1px solid #b0bec5;background:#fff;color:#546e7a;border-radius:16px;cursor:pointer;font-size:12px;transition:.15s}
+.year-tab:hover{background:#e3f2fd;border-color:#90caf9}
+.year-tab.active{background:#1a73e8;color:#fff;border-color:#1a73e8;font-weight:700}
+.holiday-section{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.holiday-section h3{font-size:13px;color:#455a64;margin-bottom:10px;font-weight:700}
+.holiday-table{width:100%;border-collapse:collapse;font-size:12px}
+.holiday-table th{background:#37474f;color:#fff;padding:7px 12px;text-align:left}
+.holiday-table td{padding:6px 12px;border-bottom:1px solid #f0f0f0}
+.holiday-table tr:hover td{background:#f5f5f5}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px}
+.tag-holiday{background:#fff9c4;color:#f57f17}
+.tag-workday{background:#e8f5e9;color:#2e7d32}
+
+/* ════ 模块管理 ════ */
+#page-modules{overflow-y:auto;padding:16px 20px;flex-direction:column;gap:0}
+.mod-panel{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:12px;overflow:hidden}
+.module-card{padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;transition:background .15s}
+.module-card:hover{background:#f5f5f5}
+.module-color{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.module-name{flex:1;font-size:14px;font-weight:600}
+.module-stats{font-size:12px;color:var(--muted)}
+.mod-expand-btn{font-size:13px;color:#90a4ae;transition:transform .2s;flex-shrink:0}
+.mod-expand-btn.open{transform:rotate(90deg)}
+/* 任务清单 */
+.mod-tasks{border-top:1px solid #f0f0f0;display:none;padding:0 18px 10px}
+.mod-tasks.open{display:block}
+.mod-tasks-toolbar{display:flex;align-items:center;gap:8px;padding:8px 0 6px;flex-wrap:wrap}
+.mod-tasks-toolbar span{font-size:11px;color:#888}
+.task-check-list{display:flex;flex-direction:column;gap:1px}
+.tc-row{display:flex;align-items:center;gap:6px;padding:5px 4px;border-radius:5px;transition:background .12s;font-size:12px;min-width:0}
+.tc-row:hover{background:#f5f5f5}
+.tc-row.tc-group{background:#eceff1;font-weight:700;padding:6px 4px;margin-top:4px;border-radius:6px}
+.tc-row.tc-group:first-child{margin-top:0}
+.tc-check{flex-shrink:0;width:15px;height:15px;cursor:pointer;accent-color:var(--primary)}
+.tc-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-name.done{text-decoration:line-through;color:#aaa}
+.tc-date{font-size:11px;color:#78909c;white-space:nowrap;width:82px;flex-shrink:0;text-align:right}
+.tc-date-od{color:#c62828!important}
+.tc-overdue{background:#fff8f8}
+.tc-overdue:hover{background:#fdecea!important}
+.tc-header{background:#f5f5f5;border-radius:5px;margin-bottom:2px}
+.tc-col-w{width:52px;flex-shrink:0;text-align:center;font-size:11px;color:#78909c}
+.tc-days-input{width:48px;flex-shrink:0;padding:2px 4px;border:1px solid #e0e0e0;border-radius:4px;font-size:11px;text-align:center;background:#fff;outline:none}
+.tc-days-input:focus{border-color:var(--primary)}
+.tc-pct-badge{font-size:10px;padding:1px 6px;border-radius:8px;background:#e3f2fd;color:#1565c0;white-space:nowrap}
+
+/* ── 统计条 ── */
+.stats-topbar{background:#fff;border-bottom:1px solid var(--border);padding:6px 16px;display:flex;gap:20px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.stat-item{display:flex;align-items:center;gap:6px;font-size:12px}
+.stat-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── 模态框 ── */
+.mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+.mask.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.modal h2{font-size:15px;margin-bottom:18px;color:var(--text)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.form-row{display:flex;flex-direction:column;gap:4px}
+.form-row.full{grid-column:1/-1}
+.form-row label{font-size:11px;color:var(--muted)}
+.form-row input,.form-row select,.form-row textarea{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--primary)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.modal-footer .btn{padding:7px 18px;font-size:13px}
+.btn-cancel{background:#f5f5f5;color:var(--text)}
+.btn-save{background:var(--primary);color:#fff}
+
+/* ── 工期信息提示 ── */
+.day-info{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* 滚动条美化 */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f0f0f0}
+::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#999}
+
+/* 右键菜单 */
+.ctx-menu{position:fixed;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:600;min-width:140px;overflow:hidden;display:none}
+.ctx-menu.show{display:block}
+.ctx-item{padding:9px 16px;font-size:12px;cursor:pointer;transition:.15s}
+.ctx-item:hover{background:#e3f2fd}
+.ctx-item.danger{color:#c62828}
+.ctx-item.danger:hover{background:#fdecea}
+.ctx-sep{height:1px;background:var(--border);margin:2px 0}
+</style>
+<script id="_data_init">
+(function(){
+  var V="rx101_v2026_excel";
+  var stored = localStorage.getItem("pm_rx101_data");
+  var needInit = true;
+  if (stored) { try { var d=JSON.parse(stored); if(d._v===V) needInit=false; } catch(e){} }
+  if (needInit) {
+    var init = {"tasks":[{"id":1,"group":true,"phase":"手板1","name":"核心板 - 手板1","module":"核心板","person":"","start":"2026-01-05","end":"2026-05-22","natural":138,"workdays":69,"progress":0,"predecessors":[]},{"id":2,"group":false,"phase":"手板1","name":"核心板_手板1_原理图设计","module":"核心板","person":"","start":"2026-01-05","end":"2026-01-23","natural":19,"workdays":15,"progress":0,"predecessors":[]},{"id":3,"group":false,"phase":"手板1","name":"核心板_手板1_结构DXF提供","module":"核心板","person":"","start":"2026-01-23","end":"2026-01-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":4,"group":false,"phase":"手板1","name":"核心板_手板1_PCB设计","module":"核心板","person":"","start":"2026-03-15","end":"2026-04-02","natural":19,"workdays":14,"progress":0,"predecessors":[]},{"id":5,"group":false,"phase":"手板1","name":"核心板_手板1_PCB生产","module":"核心板","person":"","start":"2026-04-03","end":"2026-04-17","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":6,"group":false,"phase":"手板1","name":"核心板_手板1_PCBA贴片","module":"核心板","person":"","start":"2026-04-18","end":"2026-04-24","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":7,"group":false,"phase":"手板1","name":"核心板_手板1_单板Bring up 固件准备","module":"核心板","person":"","start":"2026-04-25","end":"2026-04-25","natural":1,"workdays":0,"progress":0,"predecessors":[]},{"id":8,"group":false,"phase":"手板1","name":"核心板_手板1_单板Bring up","module":"核心板","person":"","start":"2026-04-25","end":"2026-05-01","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":9,"group":false,"phase":"手板1","name":"核心板_手板1_硬件调测","module":"核心板","person":"","start":"2026-05-01","end":"2026-05-22","natural":22,"workdays":16,"progress":0,"predecessors":[]},{"id":10,"group":false,"phase":"手板1","name":"核心板_手板1_EMC测试固件","module":"核心板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":11,"group":false,"phase":"手板1","name":"核心板_手板1_热测试固件","module":"核心板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":12,"group":true,"phase":"手板1","name":"功率运控板 - 手板1","module":"功率运控板","person":"","start":"2026-01-05","end":"2026-03-31","natural":86,"workdays":48,"progress":0,"predecessors":[]},{"id":13,"group":false,"phase":"手板1","name":"功率运控板_手板1_原理图设计","module":"功率运控板","person":"","start":"2026-01-05","end":"2026-01-23","natural":19,"workdays":15,"progress":0,"predecessors":[]},{"id":14,"group":false,"phase":"手板1","name":"功率运控板_手板1_结构DXF提供","module":"功率运控板","person":"","start":"2026-01-23","end":"2026-01-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":15,"group":false,"phase":"手板1","name":"功率运控板_手板1_PCB设计","module":"功率运控板","person":"","start":"2026-01-23","end":"2026-01-29","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":16,"group":false,"phase":"手板1","name":"功率运控板_手板1_PCB生产","module":"功率运控板","person":"","start":"2026-02-09","end":"2026-02-15","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":17,"group":false,"phase":"手板1","name":"功率运控板_手板1_PCBA贴片","module":"功率运控板","person":"","start":"2026-02-22","end":"2026-02-26","natural":5,"workdays":4,"progress":0,"predecessors":[]},{"id":18,"group":false,"phase":"手板1","name":"功率运控板_手板1_单板Bring up 固件准备","module":"功率运控板","person":"","start":"2026-02-26","end":"2026-02-26","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":19,"group":false,"phase":"手板1","name":"功率运控板_手板1_单板Bring up","module":"功率运控板","person":"","start":"2026-02-27","end":"2026-03-05","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":20,"group":false,"phase":"手板1","name":"功率运控板_手板1_硬件调测","module":"功率运控板","person":"","start":"2026-03-05","end":"2026-03-18","natural":14,"workdays":10,"progress":0,"predecessors":[]},{"id":21,"group":false,"phase":"手板1","name":"功率运控板_手板1_EMC测试固件","module":"功率运控板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":22,"group":false,"phase":"手板1","name":"功率运控板_手板1_热测试固件","module":"功率运控板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":23,"group":true,"phase":"手板1","name":"算力板 - 手板1","module":"算力板","person":"","start":"2026-03-02","end":"2026-04-26","natural":56,"workdays":46,"progress":0,"predecessors":[]},{"id":24,"group":false,"phase":"手板1","name":"算力板_手板1_原理图设计","module":"算力板","person":"","start":"2026-03-02","end":"2026-03-16","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":25,"group":false,"phase":"手板1","name":"算力板_手板1_结构DXF提供","module":"算力板","person":"","start":"2026-03-16","end":"2026-03-16","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":26,"group":false,"phase":"手板1","name":"算力板_手板1_PCB设计","module":"算力板","person":"","start":"2026-03-17","end":"2026-03-26","natural":10,"workdays":8,"progress":0,"predecessors":[]},{"id":27,"group":false,"phase":"手板1","name":"算力板_手板1_PCB生产","module":"算力板","person":"","start":"2026-03-26","end":"2026-04-01","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":28,"group":false,"phase":"手板1","name":"算力板_手板1_PCBA贴片","module":"算力板","person":"","start":"2026-04-02","end":"2026-04-06","natural":5,"workdays":3,"progress":0,"predecessors":[]},{"id":29,"group":false,"phase":"手板1","name":"算力板_手板1_单板Bring up 固件准备","module":"算力板","person":"","start":"2026-04-06","end":"2026-04-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":30,"group":false,"phase":"手板1","name":"算力板_手板1_单板Bring up","module":"算力板","person":"","start":"2026-04-07","end":"2026-04-13","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":31,"group":false,"phase":"手板1","name":"算力板_手���1_硬件调测","module":"算力板","person":"","start":"2026-04-13","end":"2026-04-26","natural":14,"workdays":10,"progress":0,"predecessors":[]},{"id":32,"group":false,"phase":"手板1","name":"算力板_手板1_EMC测试固件","module":"算力板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":33,"group":false,"phase":"手板1","name":"算力板_手板1_热测试固件","module":"算力板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":34,"group":true,"phase":"手板1","name":"Sensor板 - 手板1","module":"Sensor板","person":"","start":"2026-01-23","end":"2026-03-31","natural":68,"workdays":59,"progress":0,"predecessors":[]},{"id":35,"group":false,"phase":"手板1","name":"Sensor板_手板1_原理图设计","module":"Sensor板","person":"","start":"2026-01-23","end":"2026-01-29","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":36,"group":false,"phase":"手板1","name":"Sensor板_手板1_结构DXF提供","module":"Sensor板","person":"","start":"2026-02-02","end":"2026-02-02","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":37,"group":false,"phase":"手板1","name":"Sensor板_手板1_PCB设计","module":"Sensor板","person":"","start":"2026-02-02","end":"2026-02-13","natural":12,"workdays":10,"progress":0,"predecessors":[]},{"id":38,"group":false,"phase":"手板1","name":"Sensor板_手板1_PCB生产","module":"Sensor板","person":"","start":"2026-02-13","end":"2026-02-26","natural":14,"workdays":10,"progress":0,"predecessors":[]},{"id":39,"group":false,"phase":"手板1","name":"Sensor板_手板1_PCBA贴片","module":"Sensor板","person":"","start":"2026-02-25","end":"2026-03-06","natural":10,"workdays":8,"progress":0,"predecessors":[]},{"id":40,"group":false,"phase":"手板1","name":"Sensor板_手板1_单板Bring up 固件准备","module":"Sensor板","person":"","start":"2026-03-17","end":"2026-03-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":41,"group":false,"phase":"手板1","name":"Sensor板_手板1_单板Bring up","module":"Sensor板","person":"","start":"2026-02-12","end":"2026-02-28","natural":17,"workdays":12,"progress":0,"predecessors":[]},{"id":42,"group":false,"phase":"手板1","name":"Sensor板_手板1_硬件调测","module":"Sensor板","person":"","start":"2026-02-25","end":"2026-03-10","natural":14,"workdays":10,"progress":0,"predecessors":[]},{"id":43,"group":false,"phase":"手板1","name":"Sensor板_手板1_EMC测试固件","module":"Sensor板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":44,"group":false,"phase":"手板1","name":"Sensor板_手板1_热测试固件","module":"Sensor板","person":"","start":"2026-03-31","end":"2026-03-31","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":45,"group":true,"phase":"手板2","name":"核心板 - 手板2","module":"核心板","person":"","start":"2026-04-03","end":"2026-06-23","natural":82,"workdays":58,"progress":0,"predecessors":[]},{"id":46,"group":false,"phase":"手板2","name":"核心板_手板2_原理图设计","module":"核心板","person":"","start":"2026-04-03","end":"2026-04-14","natural":12,"workdays":8,"progress":0,"predecessors":[]},{"id":47,"group":false,"phase":"手板2","name":"核心板_手板2_结构DXF提供","module":"核心板","person":"","start":"2026-04-15","end":"2026-04-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":48,"group":false,"phase":"手板2","name":"核心板_手板2_PCB设计","module":"核心板","person":"","start":"2026-04-16","end":"2026-04-30","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":49,"group":false,"phase":"手板2","name":"核心板_手板2_PCB生产","module":"核心板","person":"","start":"2026-05-06","end":"2026-05-20","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":50,"group":false,"phase":"手板2","name":"核心板_手板2_PCBA贴片","module":"核心板","person":"","start":"2026-05-21","end":"2026-05-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":51,"group":false,"phase":"手板2","name":"核心板_手板2_单板Bring up 固件准备","module":"核心板","person":"","start":"2026-05-27","end":"2026-05-27","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":52,"group":false,"phase":"手板2","name":"核心板_手板2_单板Bring up","module":"核心板","person":"","start":"2026-05-28","end":"2026-06-01","natural":5,"workdays":3,"progress":0,"predecessors":[]},{"id":53,"group":false,"phase":"手板2","name":"核心板_手板2_硬件调测","module":"核心板","person":"","start":"2026-06-02","end":"2026-06-23","natural":22,"workdays":16,"progress":0,"predecessors":[]},{"id":54,"group":false,"phase":"手板2","name":"核心板_手板2_EMC测试固件","module":"核心板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":55,"group":false,"phase":"手板2","name":"核心板_手板2_热测试固件","module":"核心板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":56,"group":true,"phase":"手板2","name":"功率运控板 - 手板2","module":"功率运控板","person":"","start":"2026-04-03","end":"2026-06-23","natural":82,"workdays":58,"progress":0,"predecessors":[]},{"id":57,"group":false,"phase":"手板2","name":"功率运控板_手板2_原理图设计","module":"功率运控板","person":"","start":"2026-04-03","end":"2026-04-14","natural":12,"workdays":8,"progress":0,"predecessors":[]},{"id":58,"group":false,"phase":"手板2","name":"功率运控板_手板2_结构DXF提供","module":"功率运控板","person":"","start":"2026-04-15","end":"2026-04-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":59,"group":false,"phase":"手板2","name":"功率运控板_手板2_PCB设计","module":"功率运控板","person":"","start":"2026-04-16","end":"2026-04-30","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":60,"group":false,"phase":"手板2","name":"功率运控板_手板2_PCB生产","module":"功率运控板","person":"","start":"2026-05-06","end":"2026-05-20","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":61,"group":false,"phase":"手板2","name":"功率运控板_手板2_PCBA贴片","module":"功率运控板","person":"","start":"2026-05-21","end":"2026-05-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":62,"group":false,"phase":"手板2","name":"功率运控板_手板2_单板Bring up 固件准备","module":"功率运控板","person":"","start":"2026-05-27","end":"2026-05-27","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":63,"group":false,"phase":"手板2","name":"功率运控板_手板2_单板Bring up","module":"功率运控板","person":"","start":"2026-05-28","end":"2026-06-01","natural":5,"workdays":3,"progress":0,"predecessors":[]},{"id":64,"group":false,"phase":"手板2","name":"功率运控板_手板2_硬件调测","module":"功率运控板","person":"","start":"2026-06-02","end":"2026-06-23","natural":22,"workdays":16,"progress":0,"predecessors":[]},{"id":65,"group":false,"phase":"手板2","name":"功率运控板_手板2_EMC测试固件","module":"功率运控板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":66,"group":false,"phase":"手板2","name":"功率运控板_手板2_热测试固件","module":"功率运控板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":67,"group":true,"phase":"手板2","name":"算力板 - 手板2","module":"算力板","person":"","start":"2026-04-03","end":"2026-06-23","natural":82,"workdays":58,"progress":0,"predecessors":[]},{"id":68,"group":false,"phase":"手板2","name":"算力板_手板2_原理图设计","module":"算力板","person":"","start":"2026-04-03","end":"2026-04-14","natural":12,"workdays":8,"progress":0,"predecessors":[]},{"id":69,"group":false,"phase":"手板2","name":"算力板_手板2_结构DXF提供","module":"算力板","person":"","start":"2026-04-15","end":"2026-04-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":70,"group":false,"phase":"手板2","name":"算力板_手板2_PCB设计","module":"算力板","person":"","start":"2026-04-16","end":"2026-04-30","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":71,"group":false,"phase":"手板2","name":"算力板_手板2_PCB生产","module":"算力板","person":"","start":"2026-05-06","end":"2026-05-20","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":72,"group":false,"phase":"手板2","name":"算力板_手板2_PCBA贴片","module":"算力板","person":"","start":"2026-05-21","end":"2026-05-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":73,"group":false,"phase":"手板2","name":"算力板_手板2_单板Bring up 固件准备","module":"算力板","person":"","start":"2026-05-27","end":"2026-05-27","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":74,"group":false,"phase":"手板2","name":"算力板_手板2_单板Bring up","module":"算力板","person":"","start":"2026-05-28","end":"2026-06-01","natural":5,"workdays":3,"progress":0,"predecessors":[]},{"id":75,"group":false,"phase":"手板2","name":"算力板_手板2_硬件调测","module":"算力板","person":"","start":"2026-06-02","end":"2026-06-23","natural":22,"workdays":16,"progress":0,"predecessors":[]},{"id":76,"group":false,"phase":"手板2","name":"算力板_手板2_EMC测试固件","module":"算力板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":77,"group":false,"phase":"手板2","name":"算力板_手板2_热测试固件","module":"算力板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":78,"group":true,"phase":"手板2","name":"Sensor板 - 手板2","module":"Sensor板","person":"","start":"2026-04-03","end":"2026-06-23","natural":82,"workdays":58,"progress":0,"predecessors":[]},{"id":79,"group":false,"phase":"手板2","name":"Sensor板_手板2_原理图设计","module":"Sensor板","person":"","start":"2026-04-03","end":"2026-04-14","natural":12,"workdays":8,"progress":0,"predecessors":[]},{"id":80,"group":false,"phase":"手板2","name":"Sensor板_手板2_结构DXF提供","module":"Sensor板","person":"","start":"2026-04-15","end":"2026-04-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":81,"group":false,"phase":"手板2","name":"Sensor板_手板2_PCB设计","module":"Sensor板","person":"","start":"2026-04-16","end":"2026-04-30","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":82,"group":false,"phase":"手板2","name":"Sensor板_手板2_PCB生产","module":"Sensor板","person":"","start":"2026-05-06","end":"2026-05-20","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":83,"group":false,"phase":"手板2","name":"Sensor板_手板2_PCBA贴片","module":"Sensor板","person":"","start":"2026-05-21","end":"2026-05-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":84,"group":false,"phase":"手板2","name":"Sensor板_手板2_单板Bring up 固件准备","module":"Sensor板","person":"","start":"2026-05-27","end":"2026-05-27","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":85,"group":false,"phase":"手板2","name":"Sensor板_手板2_单板Bring up","module":"Sensor板","person":"","start":"2026-05-28","end":"2026-06-01","natural":5,"workdays":3,"progress":0,"predecessors":[]},{"id":86,"group":false,"phase":"手板2","name":"Sensor板_手板2_硬件调测","module":"Sensor板","person":"","start":"2026-06-02","end":"2026-06-23","natural":22,"workdays":16,"progress":0,"predecessors":[]},{"id":87,"group":false,"phase":"手板2","name":"Sensor板_手板2_EMC测试固件","module":"Sensor板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":88,"group":false,"phase":"手板2","name":"Sensor板_手板2_热测试固件","module":"Sensor板","person":"","start":"2026-06-08","end":"2026-06-08","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":89,"group":true,"phase":"P0","name":"核心板 - P0","module":"核心板","person":"","start":"2026-06-16","end":"2026-08-20","natural":66,"workdays":52,"progress":0,"predecessors":[]},{"id":90,"group":false,"phase":"P0","name":"核心板_P0_原理图设计","module":"核心板","person":"","start":"2026-06-16","end":"2026-06-23","natural":8,"workdays":6,"progress":0,"predecessors":[]},{"id":91,"group":false,"phase":"P0","name":"核心板_P0_结构DXF提供","module":"核心板","person":"","start":"2026-06-23","end":"2026-06-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":92,"group":false,"phase":"P0","name":"核心板_P0_PCB设计","module":"核心板","person":"","start":"2026-06-24","end":"2026-07-06","natural":13,"workdays":9,"progress":0,"predecessors":[]},{"id":93,"group":false,"phase":"P0","name":"核心板_P0_PCB生产","module":"核心板","person":"","start":"2026-07-07","end":"2026-07-21","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":94,"group":false,"phase":"P0","name":"核心板_P0_PCBA贴片","module":"核心板","person":"","start":"2026-07-22","end":"2026-07-28","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":95,"group":false,"phase":"P0","name":"核心板_P0_单板Bring up 固件准备","module":"核心板","person":"","start":"2026-07-28","end":"2026-07-28","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":96,"group":false,"phase":"P0","name":"核心板_P0_单板Bring up","module":"核心板","person":"","start":"2026-07-29","end":"2026-07-30","natural":2,"workdays":2,"progress":0,"predecessors":[]},{"id":97,"group":false,"phase":"P0","name":"核心板_P0_硬件调测","module":"核心板","person":"","start":"2026-07-31","end":"2026-08-20","natural":21,"workdays":15,"progress":0,"predecessors":[]},{"id":98,"group":false,"phase":"P0","name":"核心板_P0_EMC测试固件","module":"核心板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":99,"group":false,"phase":"P0","name":"核心板_P0_热测试固件","module":"核心板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":100,"group":true,"phase":"P0","name":"功率运控板 - P0","module":"功率运控板","person":"","start":"2026-06-16","end":"2026-08-20","natural":66,"workdays":52,"progress":0,"predecessors":[]},{"id":101,"group":false,"phase":"P0","name":"功率运控板_P0_原理图设计","module":"功率运控板","person":"","start":"2026-06-16","end":"2026-06-23","natural":8,"workdays":6,"progress":0,"predecessors":[]},{"id":102,"group":false,"phase":"P0","name":"功率运控板_P0_结构DXF提供","module":"功率运控板","person":"","start":"2026-06-23","end":"2026-06-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":103,"group":false,"phase":"P0","name":"功率运控板_P0_PCB设计","module":"功率运控板","person":"","start":"2026-06-24","end":"2026-07-06","natural":13,"workdays":9,"progress":0,"predecessors":[]},{"id":104,"group":false,"phase":"P0","name":"功率运控板_P0_PCB生产","module":"功率运控板","person":"","start":"2026-07-07","end":"2026-07-21","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":105,"group":false,"phase":"P0","name":"功率运控板_P0_PCBA贴片","module":"功率运控板","person":"","start":"2026-07-22","end":"2026-07-28","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":106,"group":false,"phase":"P0","name":"功率运控板_P0_单板Bring up 固件准备","module":"功率运控板","person":"","start":"2026-07-28","end":"2026-07-28","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":107,"group":false,"phase":"P0","name":"功率运控板_P0_单板Bring up","module":"功率运控板","person":"","start":"2026-07-29","end":"2026-07-30","natural":2,"workdays":2,"progress":0,"predecessors":[]},{"id":108,"group":false,"phase":"P0","name":"功率运控板_P0_硬件调测","module":"功率运控板","person":"","start":"2026-07-31","end":"2026-08-20","natural":21,"workdays":15,"progress":0,"predecessors":[]},{"id":109,"group":false,"phase":"P0","name":"功率运控板_P0_EMC测试固件","module":"功率运控板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":110,"group":false,"phase":"P0","name":"功率运控板_P0_热测试固件","module":"功率运控板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":111,"group":true,"phase":"P0","name":"算力板 - P0","module":"算力板","person":"","start":"2026-06-16","end":"2026-08-20","natural":66,"workdays":52,"progress":0,"predecessors":[]},{"id":112,"group":false,"phase":"P0","name":"算力板_P0_原理图设计","module":"算力板","person":"","start":"2026-06-16","end":"2026-06-23","natural":8,"workdays":6,"progress":0,"predecessors":[]},{"id":113,"group":false,"phase":"P0","name":"算力板_P0_结构DXF提供","module":"算力板","person":"","start":"2026-06-23","end":"2026-06-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":114,"group":false,"phase":"P0","name":"算力板_P0_PCB设计","module":"算力板","person":"","start":"2026-06-24","end":"2026-07-06","natural":13,"workdays":9,"progress":0,"predecessors":[]},{"id":115,"group":false,"phase":"P0","name":"算力板_P0_PCB生产","module":"算力板","person":"","start":"2026-07-07","end":"2026-07-21","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":116,"group":false,"phase":"P0","name":"算力板_P0_PCBA贴片","module":"算力板","person":"","start":"2026-07-22","end":"2026-07-28","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":117,"group":false,"phase":"P0","name":"算力板_P0_单板Bring up 固件准备","module":"算力板","person":"","start":"2026-07-28","end":"2026-07-28","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":118,"group":false,"phase":"P0","name":"算力板_P0_单板Bring up","module":"算力板","person":"","start":"2026-07-29","end":"2026-07-30","natural":2,"workdays":2,"progress":0,"predecessors":[]},{"id":119,"group":false,"phase":"P0","name":"算力板_P0_硬件调测","module":"算力板","person":"","start":"2026-07-31","end":"2026-08-20","natural":21,"workdays":15,"progress":0,"predecessors":[]},{"id":120,"group":false,"phase":"P0","name":"算力板_P0_EMC测试固件","module":"算力板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":121,"group":false,"phase":"P0","name":"算力板_P0_热测试固件","module":"算力板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":122,"group":true,"phase":"P0","name":"Sensor板 - P0","module":"Sensor板","person":"","start":"2026-06-16","end":"2026-08-20","natural":66,"workdays":52,"progress":0,"predecessors":[]},{"id":123,"group":false,"phase":"P0","name":"Sensor板_P0_原理图设计","module":"Sensor板","person":"","start":"2026-06-16","end":"2026-06-23","natural":8,"workdays":6,"progress":0,"predecessors":[]},{"id":124,"group":false,"phase":"P0","name":"Sensor板_P0_结构DXF提供","module":"Sensor板","person":"","start":"2026-06-23","end":"2026-06-23","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":125,"group":false,"phase":"P0","name":"Sensor板_P0_PCB设计","module":"Sensor板","person":"","start":"2026-06-24","end":"2026-07-06","natural":13,"workdays":9,"progress":0,"predecessors":[]},{"id":126,"group":false,"phase":"P0","name":"Sensor板_P0_PCB生产","module":"Sensor板","person":"","start":"2026-07-07","end":"2026-07-21","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":127,"group":false,"phase":"P0","name":"Sensor板_P0_PCBA贴片","module":"Sensor板","person":"","start":"2026-07-22","end":"2026-07-28","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":128,"group":false,"phase":"P0","name":"Sensor板_P0_单板Bring up 固件准备","module":"Sensor板","person":"","start":"2026-07-28","end":"2026-07-28","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":129,"group":false,"phase":"P0","name":"Sensor板_P0_单板Bring up","module":"Sensor板","person":"","start":"2026-07-29","end":"2026-07-30","natural":2,"workdays":2,"progress":0,"predecessors":[]},{"id":130,"group":false,"phase":"P0","name":"Sensor板_P0_硬件调测","module":"Sensor板","person":"","start":"2026-07-31","end":"2026-08-20","natural":21,"workdays":15,"progress":0,"predecessors":[]},{"id":131,"group":false,"phase":"P0","name":"Sensor板_P0_EMC测试固件","module":"Sensor板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":132,"group":false,"phase":"P0","name":"Sensor板_P0_热测试固件","module":"Sensor板","person":"","start":"2026-08-06","end":"2026-08-06","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":133,"group":true,"phase":"P1","name":"核心板 - P1","module":"核心板","person":"","start":"2026-08-14","end":"2026-10-15","natural":63,"workdays":49,"progress":0,"predecessors":[]},{"id":134,"group":false,"phase":"P1","name":"核心板_P1_原理图设计","module":"核心板","person":"","start":"2026-08-14","end":"2026-08-20","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":135,"group":false,"phase":"P1","name":"核心板_P1_结构DXF提供","module":"核心板","person":"","start":"2026-08-20","end":"2026-08-20","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":136,"group":false,"phase":"P1","name":"核心板_P1_PCB设计","module":"核心板","person":"","start":"2026-08-21","end":"2026-08-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":137,"group":false,"phase":"P1","name":"核心板_P1_PCB生产","module":"核心板","person":"","start":"2026-08-28","end":"2026-09-11","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":138,"group":false,"phase":"P1","name":"核心板_P1_PCBA贴片","module":"核心板","person":"","start":"2026-09-14","end":"2026-09-18","natural":5,"workdays":5,"progress":0,"predecessors":[]},{"id":139,"group":false,"phase":"P1","name":"核心板_P1_单板Bring up 固件准备","module":"核心板","person":"","start":"2026-09-18","end":"2026-09-18","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":140,"group":false,"phase":"P1","name":"核心板_P1_单板Bring up","module":"核心板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":141,"group":false,"phase":"P1","name":"核心板_P1_硬件调测","module":"核心板","person":"","start":"2026-09-22","end":"2026-10-15","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":142,"group":false,"phase":"P1","name":"核心板_P1_EMC测试固件","module":"核心板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":143,"group":false,"phase":"P1","name":"核心板_P1_热测试固件","module":"核心板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":144,"group":true,"phase":"P1","name":"功率运控板 - P1","module":"功率运控板","person":"","start":"2026-08-14","end":"2026-10-15","natural":63,"workdays":49,"progress":0,"predecessors":[]},{"id":145,"group":false,"phase":"P1","name":"功率运控板_P1_原理图设计","module":"功率运控板","person":"","start":"2026-08-14","end":"2026-08-20","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":146,"group":false,"phase":"P1","name":"功率运控板_P1_结构DXF提供","module":"功率运控板","person":"","start":"2026-08-20","end":"2026-08-20","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":147,"group":false,"phase":"P1","name":"功率运控板_P1_PCB设计","module":"功率运控板","person":"","start":"2026-08-21","end":"2026-08-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":148,"group":false,"phase":"P1","name":"功率运控板_P1_PCB生产","module":"功率运控板","person":"","start":"2026-08-28","end":"2026-09-11","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":149,"group":false,"phase":"P1","name":"功率运控板_P1_PCBA贴片","module":"功率运控板","person":"","start":"2026-09-14","end":"2026-09-18","natural":5,"workdays":5,"progress":0,"predecessors":[]},{"id":150,"group":false,"phase":"P1","name":"功率运控板_P1_单板Bring up 固件准备","module":"功率运控板","person":"","start":"2026-09-18","end":"2026-09-18","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":151,"group":false,"phase":"P1","name":"功率运控板_P1_单板Bring up","module":"功率运控板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":152,"group":false,"phase":"P1","name":"功率运控板_P1_硬件调测","module":"功率运控板","person":"","start":"2026-09-22","end":"2026-10-15","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":153,"group":false,"phase":"P1","name":"功率运控板_P1_EMC测试固件","module":"功率运控板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":154,"group":false,"phase":"P1","name":"功率运控板_P1_热测试固件","module":"功率运控板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":155,"group":true,"phase":"P1","name":"算力板 - P1","module":"算力板","person":"","start":"2026-08-14","end":"2026-10-15","natural":63,"workdays":49,"progress":0,"predecessors":[]},{"id":156,"group":false,"phase":"P1","name":"算力板_P1_原理图设计","module":"算力板","person":"","start":"2026-08-14","end":"2026-08-20","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":157,"group":false,"phase":"P1","name":"算力板_P1_结构DXF提供","module":"算力板","person":"","start":"2026-08-20","end":"2026-08-20","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":158,"group":false,"phase":"P1","name":"算力板_P1_PCB设计","module":"算力板","person":"","start":"2026-08-21","end":"2026-08-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":159,"group":false,"phase":"P1","name":"算力板_P1_PCB生产","module":"算力板","person":"","start":"2026-08-28","end":"2026-09-11","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":160,"group":false,"phase":"P1","name":"算力板_P1_PCBA贴片","module":"算力板","person":"","start":"2026-09-14","end":"2026-09-18","natural":5,"workdays":5,"progress":0,"predecessors":[]},{"id":161,"group":false,"phase":"P1","name":"算力板_P1_单板Bring up 固件准备","module":"算力板","person":"","start":"2026-09-18","end":"2026-09-18","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":162,"group":false,"phase":"P1","name":"算力板_P1_单板Bring up","module":"算力板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":163,"group":false,"phase":"P1","name":"算力板_P1_硬件调测","module":"算力板","person":"","start":"2026-09-22","end":"2026-10-15","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":164,"group":false,"phase":"P1","name":"算力板_P1_EMC测试固件","module":"算力板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":165,"group":false,"phase":"P1","name":"算力板_P1_热测试固件","module":"算力板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":166,"group":true,"phase":"P1","name":"Sensor板 - P1","module":"Sensor板","person":"","start":"2026-08-14","end":"2026-10-15","natural":63,"workdays":49,"progress":0,"predecessors":[]},{"id":167,"group":false,"phase":"P1","name":"Sensor板_P1_原理图设计","module":"Sensor板","person":"","start":"2026-08-14","end":"2026-08-20","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":168,"group":false,"phase":"P1","name":"Sensor板_P1_结构DXF提供","module":"Sensor板","person":"","start":"2026-08-20","end":"2026-08-20","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":169,"group":false,"phase":"P1","name":"Sensor板_P1_PCB设计","module":"Sensor板","person":"","start":"2026-08-21","end":"2026-08-27","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":170,"group":false,"phase":"P1","name":"Sensor板_P1_PCB生产","module":"Sensor板","person":"","start":"2026-08-28","end":"2026-09-11","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":171,"group":false,"phase":"P1","name":"Sensor板_P1_PCBA贴片","module":"Sensor板","person":"","start":"2026-09-14","end":"2026-09-18","natural":5,"workdays":5,"progress":0,"predecessors":[]},{"id":172,"group":false,"phase":"P1","name":"Sensor板_P1_单板Bring up 固件准备","module":"Sensor板","person":"","start":"2026-09-18","end":"2026-09-18","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":173,"group":false,"phase":"P1","name":"Sensor板_P1_单板Bring up","module":"Sensor板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":174,"group":false,"phase":"P1","name":"Sensor板_P1_硬件调测","module":"Sensor板","person":"","start":"2026-09-22","end":"2026-10-15","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":175,"group":false,"phase":"P1","name":"Sensor板_P1_EMC测试固件","module":"Sensor板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":176,"group":false,"phase":"P1","name":"Sensor板_P1_热测试固件","module":"Sensor板","person":"","start":"2026-09-21","end":"2026-09-21","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":177,"group":true,"phase":"P2","name":"核心板 - P2","module":"核心板","person":"","start":"2026-10-12","end":"2026-12-11","natural":61,"workdays":48,"progress":0,"predecessors":[]},{"id":178,"group":false,"phase":"P2","name":"核心板_P2_原理图设计","module":"核心板","person":"","start":"2026-10-12","end":"2026-10-18","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":179,"group":false,"phase":"P2","name":"核心板_P2_结构DXF提供","module":"核心板","person":"","start":"2026-10-15","end":"2026-10-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":180,"group":false,"phase":"P2","name":"核心板_P2_PCB设计","module":"核心板","person":"","start":"2026-10-16","end":"2026-10-22","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":181,"group":false,"phase":"P2","name":"核心板_P2_PCB生产","module":"核心板","person":"","start":"2026-10-26","end":"2026-11-09","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":182,"group":false,"phase":"P2","name":"核心板_P2_PCBA贴片","module":"核心板","person":"","start":"2026-11-10","end":"2026-11-14","natural":5,"workdays":4,"progress":0,"predecessors":[]},{"id":183,"group":false,"phase":"P2","name":"核心板_P2_单板Bring up 固件准备","module":"核心板","person":"","start":"2026-11-16","end":"2026-11-16","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":184,"group":false,"phase":"P2","name":"核心板_P2_单板Bring up","module":"核心板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":185,"group":false,"phase":"P2","name":"核心板_P2_硬件调测","module":"核心板","person":"","start":"2026-11-18","end":"2026-12-11","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":186,"group":false,"phase":"P2","name":"核心板_P2_EMC测试固件","module":"核心板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":187,"group":false,"phase":"P2","name":"核心板_P2_热测试固件","module":"核心板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":188,"group":true,"phase":"P2","name":"功率运控板 - P2","module":"功率运控板","person":"","start":"2026-10-12","end":"2026-12-11","natural":61,"workdays":48,"progress":0,"predecessors":[]},{"id":189,"group":false,"phase":"P2","name":"功率运控板_P2_原理图设计","module":"功率运控板","person":"","start":"2026-10-12","end":"2026-10-18","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":190,"group":false,"phase":"P2","name":"功率运控板_P2_结构DXF提供","module":"功率运控板","person":"","start":"2026-10-15","end":"2026-10-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":191,"group":false,"phase":"P2","name":"功率运控板_P2_PCB设计","module":"功率运控板","person":"","start":"2026-10-16","end":"2026-10-22","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":192,"group":false,"phase":"P2","name":"功率运控板_P2_PCB生产","module":"功率运控板","person":"","start":"2026-10-26","end":"2026-11-09","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":193,"group":false,"phase":"P2","name":"功率运控板_P2_PCBA贴片","module":"功率运控板","person":"","start":"2026-11-10","end":"2026-11-14","natural":5,"workdays":4,"progress":0,"predecessors":[]},{"id":194,"group":false,"phase":"P2","name":"功率运控板_P2_单板Bring up 固件准备","module":"功率运控板","person":"","start":"2026-11-16","end":"2026-11-16","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":195,"group":false,"phase":"P2","name":"功率运控板_P2_单板Bring up","module":"功率运控板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":196,"group":false,"phase":"P2","name":"功率运控板_P2_硬件调测","module":"功率运控板","person":"","start":"2026-11-18","end":"2026-12-11","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":197,"group":false,"phase":"P2","name":"功率运控板_P2_EMC测试固件","module":"功率运控板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":198,"group":false,"phase":"P2","name":"功率运控板_P2_热测试固件","module":"功率运控板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":199,"group":true,"phase":"P2","name":"算力板 - P2","module":"算力板","person":"","start":"2026-10-12","end":"2026-12-11","natural":61,"workdays":48,"progress":0,"predecessors":[]},{"id":200,"group":false,"phase":"P2","name":"算力板_P2_原理图设计","module":"算力板","person":"","start":"2026-10-12","end":"2026-10-18","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":201,"group":false,"phase":"P2","name":"算力板_P2_结构DXF提供","module":"算力板","person":"","start":"2026-10-15","end":"2026-10-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":202,"group":false,"phase":"P2","name":"算力板_P2_PCB设计","module":"算力板","person":"","start":"2026-10-16","end":"2026-10-22","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":203,"group":false,"phase":"P2","name":"算力板_P2_PCB生产","module":"算力板","person":"","start":"2026-10-26","end":"2026-11-09","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":204,"group":false,"phase":"P2","name":"算力板_P2_PCBA贴片","module":"算力板","person":"","start":"2026-11-10","end":"2026-11-14","natural":5,"workdays":4,"progress":0,"predecessors":[]},{"id":205,"group":false,"phase":"P2","name":"算力板_P2_单板Bring up 固件准备","module":"算力板","person":"","start":"2026-11-16","end":"2026-11-16","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":206,"group":false,"phase":"P2","name":"算力板_P2_单板Bring up","module":"算力板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":207,"group":false,"phase":"P2","name":"算力板_P2_硬件调测","module":"算力板","person":"","start":"2026-11-18","end":"2026-12-11","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":208,"group":false,"phase":"P2","name":"算力板_P2_EMC测试固件","module":"算力板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":209,"group":false,"phase":"P2","name":"算力板_P2_热测试固件","module":"算力板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":210,"group":true,"phase":"P2","name":"Sensor板 - P2","module":"Sensor板","person":"","start":"2026-10-12","end":"2026-12-11","natural":61,"workdays":48,"progress":0,"predecessors":[]},{"id":211,"group":false,"phase":"P2","name":"Sensor板_P2_原理图设计","module":"Sensor板","person":"","start":"2026-10-12","end":"2026-10-18","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":212,"group":false,"phase":"P2","name":"Sensor板_P2_结构DXF提供","module":"Sensor板","person":"","start":"2026-10-15","end":"2026-10-15","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":213,"group":false,"phase":"P2","name":"Sensor板_P2_PCB设计","module":"Sensor板","person":"","start":"2026-10-16","end":"2026-10-22","natural":7,"workdays":5,"progress":0,"predecessors":[]},{"id":214,"group":false,"phase":"P2","name":"Sensor板_P2_PCB生产","module":"Sensor板","person":"","start":"2026-10-26","end":"2026-11-09","natural":15,"workdays":11,"progress":0,"predecessors":[]},{"id":215,"group":false,"phase":"P2","name":"Sensor板_P2_PCBA贴片","module":"Sensor板","person":"","start":"2026-11-10","end":"2026-11-14","natural":5,"workdays":4,"progress":0,"predecessors":[]},{"id":216,"group":false,"phase":"P2","name":"Sensor板_P2_单板Bring up 固件准备","module":"Sensor板","person":"","start":"2026-11-16","end":"2026-11-16","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":217,"group":false,"phase":"P2","name":"Sensor板_P2_单板Bring up","module":"Sensor板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":218,"group":false,"phase":"P2","name":"Sensor板_P2_硬件调测","module":"Sensor板","person":"","start":"2026-11-18","end":"2026-12-11","natural":24,"workdays":18,"progress":0,"predecessors":[]},{"id":219,"group":false,"phase":"P2","name":"Sensor板_P2_EMC测试固件","module":"Sensor板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":220,"group":false,"phase":"P2","name":"Sensor板_P2_热测试固件","module":"Sensor板","person":"","start":"2026-11-17","end":"2026-11-17","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":221,"group":true,"phase":"中试量产","name":"核心板 - 中试量产","module":"核心板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":222,"group":false,"phase":"中试量产","name":"核心板_中试量产_中试量产","module":"核心板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":223,"group":true,"phase":"中试量产","name":"功率运控板 - 中试量产","module":"功率运控板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":224,"group":false,"phase":"中试量产","name":"功率运控板_中试量产_中试量产","module":"功率运控板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":225,"group":true,"phase":"中试量产","name":"算力板 - 中试量产","module":"算力板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":226,"group":false,"phase":"中试量产","name":"算力板_中试量产_中试量产","module":"算力板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":227,"group":true,"phase":"中试量产","name":"Sensor板 - 中试量产","module":"Sensor板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]},{"id":228,"group":false,"phase":"中试量产","name":"Sensor板_中试量产_中试量产","module":"Sensor板","person":"","start":"2026-12-01","end":"2026-12-01","natural":1,"workdays":1,"progress":0,"predecessors":[]}],"modules":[{"id":"核心板","name":"核心板","color":"#1e88e5"},{"id":"功率运控板","name":"功率运控板","color":"#8e24aa"},{"id":"算力板","name":"算力板","color":"#00897b"},{"id":"Sensor板","name":"Sensor板","color":"#e53935"}],"holidays":[{"name":"元旦","year":2026,"date":"2026-01-01","type":"holiday"},{"name":"元旦","year":2026,"date":"2026-01-02","type":"holiday"},{"name":"元旦","year":2026,"date":"2026-01-03","type":"holiday"},{"name":"元旦","year":2026,"date":"2026-01-04","type":"workday"},{"name":"春节","year":2026,"date":"2026-02-14","type":"workday"},{"name":"春节","year":2026,"date":"2026-02-15","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-16","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-17","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-18","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-19","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-20","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-21","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-22","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-23","type":"holiday"},{"name":"春节","year":2026,"date":"2026-02-28","type":"workday"},{"name":"清明节","year":2026,"date":"2026-04-04","type":"holiday"},{"name":"清明节","year":2026,"date":"2026-04-05","type":"holiday"},{"name":"清明节","year":2026,"date":"2026-04-06","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-01","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-02","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-03","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-04","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-05","type":"holiday"},{"name":"劳动节","year":2026,"date":"2026-05-09","type":"workday"},{"name":"端午节","year":2026,"date":"2026-06-19","type":"holiday"},{"name":"端午节","year":2026,"date":"2026-06-20","type":"holiday"},{"name":"端午节","year":2026,"date":"2026-06-21","type":"holiday"},{"name":"中秋节","year":2026,"date":"2026-09-20","type":"workday"},{"name":"中秋节","year":2026,"date":"2026-09-25","type":"holiday"},{"name":"中秋节","year":2026,"date":"2026-09-26","type":"holiday"},{"name":"中秋节","year":2026,"date":"2026-09-27","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-01","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-02","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-03","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-04","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-05","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-06","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-07","type":"holiday"},{"name":"国庆节","year":2026,"date":"2026-10-10","type":"workday"}],"_tid":229};
+    init._v = V;
+    localStorage.setItem("pm_rx101_data", JSON.stringify(init));
+    console.log("[init] data loaded: tasks="+init.tasks.length);
+  }
+})();
+</script>
+</head>
+<body>
+
+<!-- ══ 顶部导航 ══ -->
+<div class="topbar">
+  <h1>📋 硬件项目计划管理看板</h1>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchPage('main',this)">任务 &amp; 甘特图</button>
+    <button class="nav-btn" onclick="switchPage('stats',this)">进展分析</button>
+    <button class="nav-btn" onclick="switchPage('holiday',this)">假期管理</button>
+    <button class="nav-btn" onclick="switchPage('modules',this)">模块管理</button>
+  </div>
+  <div class="acts">
+    <button class="btn" style="background:#00897b;color:#fff" onclick="recalcAllByPred()" title="根据前置任务关系重新计算所有任务时间">⇄ 重算时序</button>
+    <button class="btn btn-green" onclick="exportExcel()">↓ 导出 Excel</button>
+    <button class="btn" style="background:#1565c0;color:#fff" onclick="document.getElementById('importFileInput').click()" title="导入之前导出的 Excel 文件">↑ 导入 Excel</button>
+    <input type="file" id="importFileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
+    <button class="btn" style="background:#546e7a;color:#fff" onclick="resetData()" title="清除本地存储，恢复初始数据">↺ 重置</button>
+  </div>
+</div>
+
+<!-- ══ 统计条 ══ -->
+<div class="stats-topbar" id="statsTopbar"></div>
+
+<!-- ══════════════════════════════════════════════
+     PAGE 1: 任务列表 + 甘特图（左右结构）
+══════════════════════════════════════════════ -->
+<div id="page-main" class="page active">
+  <!-- 左侧任务面板 -->
+  <div class="left-panel" id="leftPanel">
+    <div class="lp-toolbar">
+      <input id="searchInput" placeholder="🔍 搜索任务…" oninput="render()" style="width:100%">
+      <select id="filterModule" onchange="render()" style="flex:1">
+        <option value="">所有模块</option>
+      </select>
+      <select id="filterPhase" onchange="render()" style="flex:1">
+        <option value="">所有阶段</option>
+      </select>
+      <select id="filterPerson" onchange="render()" style="flex:1">
+        <option value="">所有人员</option>
+      </select>
+    </div>
+    <div class="task-header">
+      <span class="th-idx">#</span>
+      <span class="th-name">任务名称</span>
+      <span class="th-person">跟进人</span>
+      <span class="th-start">启动日期</span>
+      <span class="th-end">完成日期</span>
+      <span class="th-wd">工作日</span>
+      <span class="th-pct">进度</span>
+    </div>
+    <div class="task-scroll" id="taskScroll"></div>
+  </div>
+
+  <!-- 右侧甘特图 -->
+  <div class="right-panel" id="rightPanel">
+    <div class="gantt-toolbar">
+      <span style="font-size:11px;color:#78909c;margin-right:8px">甘特图</span>
+      <button class="gtb-btn" onclick="zoomGantt(-1)" title="缩小">－</button>
+      <span id="ganttZoomLabel" style="font-size:11px;min-width:28px;text-align:center">16</span>
+      <button class="gtb-btn" onclick="zoomGantt(1)" title="放大">＋</button>
+      <button class="gtb-btn" onclick="ganttScrollToday()" title="跳转今日" style="margin-left:6px">今日</button>
+    </div>
+    <div class="right-panel-wrap">
+      <button class="gantt-toggle" id="ganttToggleBtn" onclick="toggleGantt()" title="收起甘特图">◀</button>
+      <div class="gantt-scroll-wrap" id="ganttScrollWrap">
+        <div class="gantt-grid" id="ganttGrid">
+          <div class="gantt-head" id="ganttHead"></div>
+          <div class="gantt-rows" id="ganttRows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PAGE 2: 进展分析
+══════════════════════════════════════════════ -->
+<div id="page-stats" class="page">
+  <div class="stat-card" id="statModules" style="min-width:320px;max-width:500px"></div>
+  <div class="stat-card" id="statPhases" style="min-width:320px;max-width:500px"></div>
+  <div class="stat-card" id="statPersons" style="min-width:320px;max-width:500px"></div>
+  <div class="stat-card" id="statTimeline" style="min-width:320px;max-width:500px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PAGE 3: 假期管理
+══════════════════════════════════════════════ -->
+<div id="page-holiday" class="page">
+  <!-- 年份选择 + 操作按钮 -->
+  <div class="hol-header">
+    <h3>中国大陆法定节假日 &amp; 调休</h3>
+    <div class="year-tabs" id="yearTabs"></div>
+    <button class="btn btn-blue" onclick="showAddHoliday('holiday')">＋ 放假日</button>
+    <button class="btn btn-blue" onclick="showAddHoliday('workday')">＋ 调休上班</button>
+  </div>
+  <!-- 当年节假日表 -->
+  <div class="holiday-section">
+    <div style="display:flex;align-items:center;margin-bottom:10px;gap:8px">
+      <h3 id="holYearTitle" style="margin:0">2026 年节假日</h3>
+      <span id="holYearStats" style="font-size:11px;color:#888"></span>
+    </div>
+    <table class="holiday-table">
+      <thead><tr><th style="width:110px">节日名称</th><th style="width:90px">所属年份</th><th>日期</th><th style="width:90px">星期</th><th style="width:80px">类型</th><th style="width:60px">操作</th></tr></thead>
+      <tbody id="holidayTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PAGE 4: 模块管理
+══════════════════════════════════════════════ -->
+<div id="page-modules" class="page">
+  <div style="display:flex;gap:10px;margin-bottom:12px;padding:0 4px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-blue" onclick="showAddModule()">＋ 新增模块</button>
+    <span style="font-size:11px;color:#888;margin-left:4px">点击模块标题展开任务清单，勾选任务标记为已完成</span>
+  </div>
+  <div id="moduleList"></div>
+</div>
+
+<!-- ══ 任务编辑模态框 ══ -->
+<div class="mask" id="taskModal">
+  <div class="modal">
+    <h2 id="modalTitle">新增任务</h2>
+    <div class="form-grid">
+      <div class="form-row full">
+        <label>任务名称 *</label>
+        <input id="f_name" placeholder="请输入任务名称">
+      </div>
+      <div class="form-row">
+        <label>所属模块</label>
+        <select id="f_module"></select>
+      </div>
+      <div class="form-row">
+        <label>所属阶段</label>
+        <select id="f_phase"></select>
+      </div>
+      <div class="form-row">
+        <label>跟进人</label>
+        <input id="f_person" placeholder="负责人">
+      </div>
+      <div class="form-row">
+        <label>启动日期</label>
+        <input id="f_start" type="date" onchange="onStartChange()">
+      </div>
+      <div class="form-row">
+        <label>完成日期</label>
+        <input id="f_end" type="date" onchange="onEndChange()">
+      </div>
+      <div class="form-row">
+        <label>工时（自然日）</label>
+        <input id="f_natural" type="number" min="1" value="1" oninput="calcEndFromDays()">
+        <span class="day-info" id="f_dayinfo"></span>
+      </div>
+      <div class="form-row">
+        <label>工时（工作日）</label>
+        <input id="f_workdays" type="number" min="1" value="1" oninput="calcEndFromWorkdays()">
+      </div>
+      <div class="form-row full">
+        <label>前置任务 <span style="font-weight:400;color:#aaa">（完成后本任务才能启动）</span></label>
+        <select id="f_pred" multiple style="height:72px;font-size:12px;padding:4px"></select>
+        <span class="day-info">按住 Ctrl 多选；选定后保存将自动推算启动日期</span>
+      </div>
+      <div class="form-row full">
+        <label>完成度（%）</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="f_progress" type="range" min="0" max="100" step="5" value="0"
+            oninput="document.getElementById('f_pct_label').textContent=this.value+'%'" style="flex:1;accent-color:var(--primary)">
+          <span id="f_pct_label" style="font-size:13px;min-width:36px">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('taskModal')">取消</button>
+      <button class="btn btn-save" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 假期编辑模态框 ══ -->
+<div class="mask" id="holidayModal">
+  <div class="modal" style="max-width:400px">
+    <h2 id="hModalTitle">添加放假日</h2>
+    <div class="form-grid">
+      <div class="form-row full"><label>节日名称 *</label><input id="h_name" placeholder="如：春节、清明节"></div>
+      <div class="form-row">
+        <label>所属年份</label>
+        <select id="h_year"></select>
+      </div>
+      <div class="form-row">
+        <label>类型</label>
+        <select id="h_type_sel">
+          <option value="holiday">放假日</option>
+          <option value="workday">调休上班日</option>
+        </select>
+      </div>
+      <div class="form-row full" id="h_single_row"><label>日期</label><input id="h_date" type="date"></div>
+      <div class="form-row full" id="h_batch_wrap" style="display:none">
+        <label>批量添加日期（每行一个，格式 YYYY-MM-DD）</label>
+        <textarea id="h_batch" rows="4" placeholder="2027-01-01&#10;2027-01-02&#10;2027-01-03" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="form-row full">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="h_batch_mode" onchange="toggleBatchMode()"> 批量输入模式
+        </label>
+      </div>
+      <input type="hidden" id="h_type">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('holidayModal')">取消</button>
+      <button class="btn btn-save" onclick="saveHoliday()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 批量日期弹窗 ══ -->
+<div class="mask" id="batchDateModal">
+  <div class="modal" style="max-width:360px">
+    <h2>批量设置阶段日期</h2>
+    <div style="font-size:12px;color:#546e7a;margin-bottom:12px">
+      模块：<strong id="bd_module"></strong> &nbsp;|&nbsp; 阶段：<strong id="bd_phase"></strong>
+    </div>
+    <div class="form-grid">
+      <div class="form-row full">
+        <label>阶段起始日期 *</label>
+        <input type="date" id="bd_start">
+        <span class="day-info">将从此日期起，按工作日顺序依次推算各任务的启动/完成日期</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-green" style="flex:1" onclick="applyBatchDate()">确认推算</button>
+      <button class="btn" style="background:#e0e0e0;flex:1" onclick="closeModal('batchDateModal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 模块编辑模态框 ══ -->
+<div class="mask" id="moduleModal">
+  <div class="modal" style="max-width:480px">
+    <h2 id="mModalTitle">新增模块</h2>
+    <div class="form-grid">
+      <div class="form-row full"><label>模块名称 *</label><input id="m_name" placeholder="如：底盘控制板"></div>
+      <div class="form-row full">
+        <label>颜色标识</label>
+        <input id="m_color" type="color" value="#1a73e8" style="height:36px;cursor:pointer">
+      </div>
+    </div>
+    <!-- 新增模块时才显示：各阶段启动日期 -->
+    <div id="m_phase_dates" style="margin-top:14px">
+      <div style="font-size:12px;font-weight:700;color:#455a64;margin-bottom:8px">各阶段启动日期（自动生成任务）</div>
+      <div class="form-grid" id="m_phase_grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('moduleModal')">取消</button>
+      <button class="btn btn-save" onclick="saveModule()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 右键菜单 ══ -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxEdit()">✏️ 编辑任务</div>
+  <div class="ctx-item" onclick="ctxAddSub()">＋ 添加子任务</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">🗑 删除</div>
+</div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════
+// 假期数据（2026–2035，中国大陆法定节假日）
+// ═══════════════════════════════════════════════════
+// year 字段用于年份Tab归类
+let holidays = [
+  // ──────────── 2026 ────────────
+  {name:'元旦',year:2026,date:'2026-01-01',type:'holiday'},
+  {name:'元旦',year:2026,date:'2026-01-02',type:'holiday'},
+  {name:'元旦',year:2026,date:'2026-01-03',type:'holiday'},
+  {name:'元旦调休',year:2026,date:'2026-01-04',type:'workday'},
+  {name:'春节',year:2026,date:'2026-02-15',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-16',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-17',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-18',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-19',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-20',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-21',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-22',type:'holiday'},
+  {name:'春节',year:2026,date:'2026-02-23',type:'holiday'},
+  {name:'春节调休',year:2026,date:'2026-02-14',type:'workday'},
+  {name:'春节调休',year:2026,date:'2026-02-28',type:'workday'},
+  {name:'清明节',year:2026,date:'2026-04-04',type:'holiday'},
+  {name:'清明节',year:2026,date:'2026-04-05',type:'holiday'},
+  {name:'清明节',year:2026,date:'2026-04-06',type:'holiday'},
+  {name:'劳动节',year:2026,date:'2026-05-01',type:'holiday'},
+  {name:'劳动节',year:2026,date:'2026-05-02',type:'holiday'},
+  {name:'劳动节',year:2026,date:'2026-05-03',type:'holiday'},
+  {name:'劳动节',year:2026,date:'2026-05-04',type:'holiday'},
+  {name:'劳动节',year:2026,date:'2026-05-05',type:'holiday'},
+  {name:'劳动节调休',year:2026,date:'2026-05-09',type:'workday'},
+  {name:'端午节',year:2026,date:'2026-06-19',type:'holiday'},
+  {name:'端午节',year:2026,date:'2026-06-20',type:'holiday'},
+  {name:'端午节',year:2026,date:'2026-06-21',type:'holiday'},
+  {name:'中秋节',year:2026,date:'2026-09-25',type:'holiday'},
+  {name:'中秋节',year:2026,date:'2026-09-26',type:'holiday'},
+  {name:'中秋节',year:2026,date:'2026-09-27',type:'holiday'},
+  {name:'中秋调休',year:2026,date:'2026-09-20',type:'workday'},
+  {name:'国庆节',year:2026,date:'2026-10-01',type:'holiday'},
+  {name:'国庆节',year:2026,date:'2026-10-02',type:'holiday'},
+  {name:'国庆节',year:2026,date:'2026-10-03',type:'holiday'},
+  {name:'国庆调休',year:2026,date:'2026-10-10',type:'workday'},
+  // ──────────── 2027 ────────────
+  {name:'元旦',year:2027,date:'2027-01-01',type:'holiday'},
+  {name:'元旦',year:2027,date:'2027-01-02',type:'holiday'},
+  {name:'元旦',year:2027,date:'2027-01-03',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-05',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-06',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-07',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-08',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-09',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-10',type:'holiday'},
+  {name:'春节',year:2027,date:'2027-02-11',type:'holiday'},
+  {name:'清明节',year:2027,date:'2027-04-05',type:'holiday'},
+  {name:'清明节',year:2027,date:'2027-04-06',type:'holiday'},
+  {name:'清明节',year:2027,date:'2027-04-07',type:'holiday'},
+  {name:'劳动节',year:2027,date:'2027-05-01',type:'holiday'},
+  {name:'劳动节',year:2027,date:'2027-05-02',type:'holiday'},
+  {name:'劳动节',year:2027,date:'2027-05-03',type:'holiday'},
+  {name:'��动节',year:2027,date:'2027-05-04',type:'holiday'},
+  {name:'劳动节',year:2027,date:'2027-05-05',type:'holiday'},
+  {name:'端午节',year:2027,date:'2027-06-09',type:'holiday'},
+  {name:'端午节',year:2027,date:'2027-06-10',type:'holiday'},
+  {name:'端午节',year:2027,date:'2027-06-11',type:'holiday'},
+  {name:'中秋节',year:2027,date:'2027-09-15',type:'holiday'},
+  {name:'中秋节',year:2027,date:'2027-09-16',type:'holiday'},
+  {name:'中秋节',year:2027,date:'2027-09-17',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-01',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-02',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-03',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-04',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-05',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-06',type:'holiday'},
+  {name:'国庆节',year:2027,date:'2027-10-07',type:'holiday'},
+  // ──────────── 2028 ────────────
+  {name:'元旦',year:2028,date:'2028-01-01',type:'holiday'},
+  {name:'元旦',year:2028,date:'2028-01-02',type:'holiday'},
+  {name:'元旦',year:2028,date:'2028-01-03',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-25',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-26',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-27',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-28',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-29',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-30',type:'holiday'},
+  {name:'春节',year:2028,date:'2028-01-31',type:'holiday'},
+  {name:'清明节',year:2028,date:'2028-04-04',type:'holiday'},
+  {name:'清明节',year:2028,date:'2028-04-05',type:'holiday'},
+  {name:'清明节',year:2028,date:'2028-04-06',type:'holiday'},
+  {name:'劳动节',year:2028,date:'2028-04-29',type:'holiday'},
+  {name:'劳动节',year:2028,date:'2028-04-30',type:'holiday'},
+  {name:'劳动节',year:2028,date:'2028-05-01',type:'holiday'},
+  {name:'劳动节',year:2028,date:'2028-05-02',type:'holiday'},
+  {name:'劳动节',year:2028,date:'2028-05-03',type:'holiday'},
+  {name:'端午节',year:2028,date:'2028-05-28',type:'holiday'},
+  {name:'端午节',year:2028,date:'2028-05-29',type:'holiday'},
+  {name:'端午节',year:2028,date:'2028-05-30',type:'holiday'},
+  {name:'中秋节',year:2028,date:'2028-09-03',type:'holiday'},
+  {name:'中秋节',year:2028,date:'2028-09-04',type:'holiday'},
+  {name:'中秋节',year:2028,date:'2028-09-05',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-01',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-02',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-03',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-04',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-05',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-06',type:'holiday'},
+  {name:'国庆节',year:2028,date:'2028-10-07',type:'holiday'},
+  // ──────────── 2029 ────────────
+  {name:'元旦',year:2029,date:'2029-01-01',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-13',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-14',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-15',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-16',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-17',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-18',type:'holiday'},
+  {name:'春节',year:2029,date:'2029-02-19',type:'holiday'},
+  {name:'��明节',year:2029,date:'2029-04-04',type:'holiday'},
+  {name:'清明节',year:2029,date:'2029-04-05',type:'holiday'},
+  {name:'清明节',year:2029,date:'2029-04-06',type:'holiday'},
+  {name:'劳动节',year:2029,date:'2029-05-01',type:'holiday'},
+  {name:'劳动节',year:2029,date:'2029-05-02',type:'holiday'},
+  {name:'劳动节',year:2029,date:'2029-05-03',type:'holiday'},
+  {name:'劳动节',year:2029,date:'2029-05-04',type:'holiday'},
+  {name:'劳动节',year:2029,date:'2029-05-05',type:'holiday'},
+  {name:'���午节',year:2029,date:'2029-06-18',type:'holiday'},
+  {name:'端午节',year:2029,date:'2029-06-19',type:'holiday'},
+  {name:'端午节',year:2029,date:'2029-06-20',type:'holiday'},
+  {name:'中秋节',year:2029,date:'2029-09-22',type:'holiday'},
+  {name:'中秋节',year:2029,date:'2029-09-23',type:'holiday'},
+  {name:'中秋节',year:2029,date:'2029-09-24',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-01',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-02',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-03',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-04',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-05',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-06',type:'holiday'},
+  {name:'国庆节',year:2029,date:'2029-10-07',type:'holiday'},
+  // ──────────── 2030 ────────────
+  {name:'元旦',year:2030,date:'2030-01-01',type:'holiday'},
+  {name:'元旦',year:2030,date:'2030-01-02',type:'holiday'},
+  {name:'元旦',year:2030,date:'2030-01-03',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-03',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-04',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-05',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-06',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-07',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-08',type:'holiday'},
+  {name:'春节',year:2030,date:'2030-02-09',type:'holiday'},
+  {name:'清明节',year:2030,date:'2030-04-05',type:'holiday'},
+  {name:'清明节',year:2030,date:'2030-04-06',type:'holiday'},
+  {name:'清明节',year:2030,date:'2030-04-07',type:'holiday'},
+  {name:'劳动节',year:2030,date:'2030-05-01',type:'holiday'},
+  {name:'劳动节',year:2030,date:'2030-05-02',type:'holiday'},
+  {name:'劳动节',year:2030,date:'2030-05-03',type:'holiday'},
+  {name:'劳动节',year:2030,date:'2030-05-04',type:'holiday'},
+  {name:'劳动节',year:2030,date:'2030-05-05',type:'holiday'},
+  {name:'端午节',year:2030,date:'2030-06-08',type:'holiday'},
+  {name:'端午节',year:2030,date:'2030-06-09',type:'holiday'},
+  {name:'端午节',year:2030,date:'2030-06-10',type:'holiday'},
+  {name:'中秋节',year:2030,date:'2030-09-12',type:'holiday'},
+  {name:'中秋节',year:2030,date:'2030-09-13',type:'holiday'},
+  {name:'中秋节',year:2030,date:'2030-09-14',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-01',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-02',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-03',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-04',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-05',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-06',type:'holiday'},
+  {name:'国庆节',year:2030,date:'2030-10-07',type:'holiday'},
+  // ──────────── 2031 ────────────
+  {name:'元旦',year:2031,date:'2031-01-01',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-23',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-24',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-25',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-26',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-27',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-28',type:'holiday'},
+  {name:'春节',year:2031,date:'2031-01-29',type:'holiday'},
+  {name:'清明节',year:2031,date:'2031-04-05',type:'holiday'},
+  {name:'清明节',year:2031,date:'2031-04-06',type:'holiday'},
+  {name:'清明节',year:2031,date:'2031-04-07',type:'holiday'},
+  {name:'劳动节',year:2031,date:'2031-05-01',type:'holiday'},
+  {name:'劳动节',year:2031,date:'2031-05-02',type:'holiday'},
+  {name:'劳动节',year:2031,date:'2031-05-03',type:'holiday'},
+  {name:'劳动节',year:2031,date:'2031-05-04',type:'holiday'},
+  {name:'劳动节',year:2031,date:'2031-05-05',type:'holiday'},
+  {name:'端午节',year:2031,date:'2031-06-27',type:'holiday'},
+  {name:'端午节',year:2031,date:'2031-06-28',type:'holiday'},
+  {name:'端午节',year:2031,date:'2031-06-29',type:'holiday'},
+  {name:'中秋节',year:2031,date:'2031-09-01',type:'holiday'},
+  {name:'中秋节',year:2031,date:'2031-09-02',type:'holiday'},
+  {name:'中秋节',year:2031,date:'2031-09-03',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-01',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-02',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-03',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-04',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-05',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-06',type:'holiday'},
+  {name:'国庆节',year:2031,date:'2031-10-07',type:'holiday'},
+  // ──────────── 2032 ────────────
+  {name:'元旦',year:2032,date:'2032-01-01',type:'holiday'},
+  {name:'元旦',year:2032,date:'2032-01-02',type:'holiday'},
+  {name:'元旦',year:2032,date:'2032-01-03',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-11',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-12',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-13',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-14',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-15',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-16',type:'holiday'},
+  {name:'春节',year:2032,date:'2032-02-17',type:'holiday'},
+  {name:'清明节',year:2032,date:'2032-04-04',type:'holiday'},
+  {name:'清明节',year:2032,date:'2032-04-05',type:'holiday'},
+  {name:'清明节',year:2032,date:'2032-04-06',type:'holiday'},
+  {name:'劳动节',year:2032,date:'2032-05-01',type:'holiday'},
+  {name:'劳动节',year:2032,date:'2032-05-02',type:'holiday'},
+  {name:'劳动节',year:2032,date:'2032-05-03',type:'holiday'},
+  {name:'劳动节',year:2032,date:'2032-05-04',type:'holiday'},
+  {name:'劳动节',year:2032,date:'2032-05-05',type:'holiday'},
+  {name:'端午节',year:2032,date:'2032-06-16',type:'holiday'},
+  {name:'端午节',year:2032,date:'2032-06-17',type:'holiday'},
+  {name:'端午节',year:2032,date:'2032-06-18',type:'holiday'},
+  {name:'中秋节',year:2032,date:'2032-09-19',type:'holiday'},
+  {name:'中秋节',year:2032,date:'2032-09-20',type:'holiday'},
+  {name:'中秋节',year:2032,date:'2032-09-21',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-01',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-02',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-03',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-04',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-05',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-06',type:'holiday'},
+  {name:'国庆节',year:2032,date:'2032-10-07',type:'holiday'},
+  // ──────────── 2033 ────────────
+  {name:'元旦',year:2033,date:'2033-01-01',type:'holiday'},
+  {name:'元旦',year:2033,date:'2033-01-02',type:'holiday'},
+  {name:'元旦',year:2033,date:'2033-01-03',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-01-31',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-01',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-02',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-03',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-04',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-05',type:'holiday'},
+  {name:'春节',year:2033,date:'2033-02-06',type:'holiday'},
+  {name:'清明节',year:2033,date:'2033-04-05',type:'holiday'},
+  {name:'清明节',year:2033,date:'2033-04-06',type:'holiday'},
+  {name:'清明节',year:2033,date:'2033-04-07',type:'holiday'},
+  {name:'劳动节',year:2033,date:'2033-05-01',type:'holiday'},
+  {name:'劳动节',year:2033,date:'2033-05-02',type:'holiday'},
+  {name:'劳动节',year:2033,date:'2033-05-03',type:'holiday'},
+  {name:'劳动节',year:2033,date:'2033-05-04',type:'holiday'},
+  {name:'劳动节',year:2033,date:'2033-05-05',type:'holiday'},
+  {name:'端午节',year:2033,date:'2033-06-05',type:'holiday'},
+  {name:'端午节',year:2033,date:'2033-06-06',type:'holiday'},
+  {name:'端午节',year:2033,date:'2033-06-07',type:'holiday'},
+  {name:'中秋节',year:2033,date:'2033-09-08',type:'holiday'},
+  {name:'中秋节',year:2033,date:'2033-09-09',type:'holiday'},
+  {name:'中秋节',year:2033,date:'2033-09-10',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-01',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-02',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-03',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-04',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-05',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-06',type:'holiday'},
+  {name:'国庆节',year:2033,date:'2033-10-07',type:'holiday'},
+  // ──────────── 2034 ────────────
+  {name:'元旦',year:2034,date:'2034-01-01',type:'holiday'},
+  {name:'元旦',year:2034,date:'2034-01-02',type:'holiday'},
+  {name:'元旦',year:2034,date:'2034-01-03',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-19',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-20',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-21',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-22',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-23',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-24',type:'holiday'},
+  {name:'春节',year:2034,date:'2034-02-25',type:'holiday'},
+  {name:'清明节',year:2034,date:'2034-04-05',type:'holiday'},
+  {name:'清明节',year:2034,date:'2034-04-06',type:'holiday'},
+  {name:'清明节',year:2034,date:'2034-04-07',type:'holiday'},
+  {name:'劳动节',year:2034,date:'2034-05-01',type:'holiday'},
+  {name:'劳动节',year:2034,date:'2034-05-02',type:'holiday'},
+  {name:'劳动节',year:2034,date:'2034-05-03',type:'holiday'},
+  {name:'劳动节',year:2034,date:'2034-05-04',type:'holiday'},
+  {name:'劳动节',year:2034,date:'2034-05-05',type:'holiday'},
+  {name:'端午节',year:2034,date:'2034-06-24',type:'holiday'},
+  {name:'端午节',year:2034,date:'2034-06-25',type:'holiday'},
+  {name:'端午节',year:2034,date:'2034-06-26',type:'holiday'},
+  {name:'中秋节',year:2034,date:'2034-09-28',type:'holiday'},
+  {name:'中秋节',year:2034,date:'2034-09-29',type:'holiday'},
+  {name:'中秋节',year:2034,date:'2034-09-30',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-01',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-02',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-03',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-04',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-05',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-06',type:'holiday'},
+  {name:'国庆节',year:2034,date:'2034-10-07',type:'holiday'},
+  // ──────────── 2035 ────────────
+  {name:'元旦',year:2035,date:'2035-01-01',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-08',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-09',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-10',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-11',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-12',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-13',type:'holiday'},
+  {name:'春节',year:2035,date:'2035-02-14',type:'holiday'},
+  {name:'清明节',year:2035,date:'2035-04-05',type:'holiday'},
+  {name:'清明节',year:2035,date:'2035-04-06',type:'holiday'},
+  {name:'清明节',year:2035,date:'2035-04-07',type:'holiday'},
+  {name:'劳动节',year:2035,date:'2035-05-01',type:'holiday'},
+  {name:'劳动节',year:2035,date:'2035-05-02',type:'holiday'},
+  {name:'劳动节',year:2035,date:'2035-05-03',type:'holiday'},
+  {name:'劳动节',year:2035,date:'2035-05-04',type:'holiday'},
+  {name:'劳动节',year:2035,date:'2035-05-05',type:'holiday'},
+  {name:'端午节',year:2035,date:'2035-06-13',type:'holiday'},
+  {name:'端午节',year:2035,date:'2035-06-14',type:'holiday'},
+  {name:'端午节',year:2035,date:'2035-06-15',type:'holiday'},
+  {name:'��秋节',year:2035,date:'2035-09-17',type:'holiday'},
+  {name:'中秋节',year:2035,date:'2035-09-18',type:'holiday'},
+  {name:'中秋节',year:2035,date:'2035-09-19',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-01',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-02',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-03',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-04',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-05',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-06',type:'holiday'},
+  {name:'国庆节',year:2035,date:'2035-10-07',type:'holiday'},
+];
+
+// 是否是工作日（考虑节假日和调休）
+function isWorkday(dateStr) {
+  const d = new Date(dateStr);
+  const dow = d.getDay(); // 0=日 6=六
+  const isWeekend = dow === 0 || dow === 6;
+  const isHol = holidays.some(h => h.date === dateStr && h.type === 'holiday');
+  const isExtra = holidays.some(h => h.date === dateStr && h.type === 'workday');
+  if (isHol) return false;          // 法定假日
+  if (isExtra) return true;         // 调休上班
+  if (isWeekend) return false;      // 普通周末
+  return true;                      // 普通工作日
+}
+function isHolidayDate(d) { return holidays.some(h=>h.date===d&&h.type==='holiday'); }
+function isWeekendDate(d) { const w=new Date(d).getDay();return w===0||w===6; }
+function isWorkdayExtra(d) { return holidays.some(h=>h.date===d&&h.type==='workday'); }
+function isToday(d) { return d===fmt(new Date()); }
+
+// 计算两个日期之间的工作日数
+function calcWorkdays(startStr, endStr) {
+  if (!startStr || !endStr) return 0;
+  let count = 0;
+  let cur = new Date(startStr);
+  const end = new Date(endStr);
+  while (cur <= end) {
+    if (isWorkday(fmt(cur))) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+// 计算自然日数
+function calcNaturalDays(startStr, endStr) {
+  if (!startStr || !endStr) return 0;
+  return Math.round((new Date(endStr)-new Date(startStr))/86400000)+1;
+}
+// 从启动日期 + 自然日天数 → 完成日期
+function addNaturalDays(startStr, n) {
+  if (!startStr || !n) return '';
+  const d = new Date(startStr);
+  d.setDate(d.getDate() + n - 1);
+  return fmt(d);
+}
+
+// 根据工作日数计算结束日期
+function addWorkdays(startStr, n) {
+  if (!startStr || !n) return '';
+  let cur = new Date(startStr);
+  let count = 0;
+  while (count < n) {
+    if (isWorkday(fmt(cur))) count++;
+    if (count < n) cur.setDate(cur.getDate() + 1);
+  }
+  return fmt(cur);
+}
+
+function fmt(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d;
+  return d.toISOString().slice(0,10);
+}
+
+// ═══════════════════════════════════════════════════
+// 模块数据
+// ═══════════════════════════════════════════════════
+let modules = [
+  {id:'核心板',      name:'核心板',      color:'#1e88e5'},
+  {id:'功率运控板',  name:'功率运控板',  color:'#8e24aa'},
+  {id:'算力板',      name:'算力板',      color:'#00897b'},
+  {id:'Sensor板',    name:'Sensor板',    color:'#e53935'},
+];
+
+// ══════════════════��════════════════════════════════
+// 阶段 & 任务模板
+// ═══════════════════════════════════════════════════
+const PHASES = ['手板1','手板2','P0','P1','P2','中试量产'];
+
+// 任务模板 —— 统一用通用任务名，生成时自动拼接「模块_阶段_」前缀
+// 每个阶段模板：{ sub: 任务名后缀, days: 自然日 }
+// 任务模板：days = 自然日（Excel原始数据）
+const PHASE_TASK_DEFS = {
+  '手板1': [
+    {sub:'原理图设计',            days:19},
+    {sub:'结构DXF提供',           days:1},
+    {sub:'PCB设计',               days:19},
+    {sub:'PCB生产',               days:15},
+    {sub:'PCBA贴片',              days:7},
+    {sub:'单板Bring up 固件准备', days:1},
+    {sub:'单板Bring up',          days:7},
+    {sub:'硬件调测',              days:22},
+    {sub:'EMC测试固件',           days:1},
+    {sub:'热测试固件',            days:1},
+  ],
+  '手板2': [
+    {sub:'原理图设计',            days:12},
+    {sub:'结构DXF提供',           days:1},
+    {sub:'PCB设计',               days:15},
+    {sub:'PCB生产',               days:15},
+    {sub:'PCBA贴片',              days:7},
+    {sub:'单板Bring up 固件准备', days:1},
+    {sub:'单板Bring up',          days:5},
+    {sub:'硬件调测',              days:22},
+    {sub:'EMC测试固件',           days:1},
+    {sub:'热测试固件',            days:1},
+  ],
+  'P0': [
+    {sub:'原理图设计',            days:8},
+    {sub:'结构DXF提供',           days:1},
+    {sub:'PCB设计',               days:13},
+    {sub:'PCB生产',               days:15},
+    {sub:'PCBA贴片',              days:7},
+    {sub:'单板Bring up 固件准备', days:1},
+    {sub:'单板Bring up',          days:2},
+    {sub:'硬件调测',              days:21},
+    {sub:'EMC测试固件',           days:1},
+    {sub:'热测试固件',            days:1},
+  ],
+  'P1': [
+    {sub:'原理图设计',            days:7},
+    {sub:'结构DXF提供',           days:1},
+    {sub:'PCB设计',               days:7},
+    {sub:'PCB生产',               days:15},
+    {sub:'PCBA贴片',              days:5},
+    {sub:'单板Bring up 固件准备', days:1},
+    {sub:'单板Bring up',          days:1},
+    {sub:'硬件调测',              days:24},
+    {sub:'EMC测试固件',           days:1},
+    {sub:'热测试固件',            days:1},
+  ],
+  'P2': [
+    {sub:'原理图设计',            days:7},
+    {sub:'结构DXF提供',           days:1},
+    {sub:'PCB设计',               days:7},
+    {sub:'PCB生产',               days:15},
+    {sub:'PCBA贴片',              days:5},
+    {sub:'单板Bring up 固件准备', days:1},
+    {sub:'单板Bring up',          days:1},
+    {sub:'硬件调测',              days:24},
+    {sub:'EMC测试固件',           days:1},
+    {sub:'热测试固件',            days:1},
+  ],
+  '中试量产': [
+    {sub:'中试量产',              days:1},
+  ],
+};
+
+// 兼容旧接口：动态生成带模块前缀的任务名
+function getTaskName(module, phase, sub) {
+  return `${module}_${phase}_${sub}`;
+}
+
+// 旧 TASK_TEMPLATES 保持兼容（buildTasks 不再使用，由新逻辑替代）
+const TASK_TEMPLATES = PHASE_TASK_DEFS;
+
+// 生成初始任务（核心板 + 日期顺序）
+let tasks = [];
+let _tid = 1;
+function mkTask(phase, name, module, start, days, group=false) {
+  const end = days > 0 ? addNaturalDays(start, days) : '';
+  const wd  = days > 0 ? calcWorkdays(start, end) : 0;
+  return {id:_tid++, group, phase, name, module, person:'', start, end, natural:days, workdays:wd, progress:0};
+}
+
+// 初始化任务数据
+(function buildTasks() {
+  // 精确任务数据：[phase, module, sub, start, end, natural, workdays]
+  const RAW = [
+    // ── 手板1 ──
+    ['手板1','核心板',    '原理图设计',           '2026-01-05','2026-01-23',19,15],
+    ['手板1','核心板',    '结构DXF提供',          '2026-01-23','2026-01-23',1,1],
+    ['手板1','核心板',    'PCB设计',              '2026-03-15','2026-04-02',19,14],
+    ['手板1','核心板',    'PCB生产',              '2026-04-03','2026-04-17',15,11],
+    ['手板1','核心板',    'PCBA贴片',             '2026-04-18','2026-04-24',7,5],
+    ['手板1','核心板',    '单板Bring up 固件准备','2026-04-25','2026-04-25',1,0],
+    ['手板1','核心板',    '单板Bring up',         '2026-04-25','2026-05-01',7,5],
+    ['手板1','核心板',    '硬件调测',             '2026-05-01','2026-05-22',22,16],
+    ['手板1','核心板',    'EMC测试固件',          '2026-03-31','2026-03-31',1,1],
+    ['手板1','核心板',    '热测试固件',           '2026-03-31','2026-03-31',1,1],
+
+    ['手板1','功率运控板','原理图设计',           '2026-01-05','2026-01-23',19,15],
+    ['手板1','功率运控板','结构DXF提供',          '2026-01-23','2026-01-23',1,1],
+    ['手板1','功率运控板','PCB设计',              '2026-01-23','2026-01-29',7,5],
+    ['手板1','功率运控板','PCB生产',              '2026-02-09','2026-02-15',7,5],
+    ['手板1','功率运控板','PCBA贴片',             '2026-02-22','2026-02-26',5,4],
+    ['手板1','功率运控板','单板Bring up 固件准备','2026-02-26','2026-02-26',1,1],
+    ['手板1','功率运控板','单板Bring up',         '2026-02-27','2026-03-05',7,5],
+    ['手板1','功率运控板','硬件调测',             '2026-03-05','2026-03-18',14,10],
+    ['手板1','功率运控板','EMC测试固件',          '2026-03-31','2026-03-31',1,1],
+    ['手板1','功率运控板','热测试固件',           '2026-03-31','2026-03-31',1,1],
+
+    ['手板1','算力板',    '原理图设计',           '2026-03-02','2026-03-16',15,11],
+    ['手板1','算力板',    '结构DXF提供',          '2026-03-16','2026-03-16',1,1],
+    ['手板1','算力板',    'PCB设计',              '2026-03-17','2026-03-26',10,8],
+    ['手板1','算力板',    'PCB生产',              '2026-03-26','2026-04-01',7,5],
+    ['手板1','算力板',    'PCBA贴片',             '2026-04-02','2026-04-06',5,3],
+    ['手板1','算力板',    '单板Bring up 固件准备','2026-04-06','2026-04-06',1,1],
+    ['手板1','算力板',    '单板Bring up',         '2026-04-07','2026-04-13',7,5],
+    ['手板1','算力板',    '硬件调测',             '2026-04-13','2026-04-26',14,10],
+    ['手板1','算力板',    'EMC测试固件',          '2026-03-31','2026-03-31',1,1],
+    ['手板1','算力板',    '热测试固件',           '2026-03-31','2026-03-31',1,1],
+
+    ['手板1','Sensor板',  '原理图设计',           '2026-01-23','2026-01-29',7,5],
+    ['手板1','Sensor板',  '结构DXF提供',          '2026-02-02','2026-02-02',1,1],
+    ['手板1','Sensor板',  'PCB设计',              '2026-02-02','2026-02-13',12,10],
+    ['手板1','Sensor板',  'PCB生产',              '2026-02-13','2026-02-26',14,10],
+    ['手板1','Sensor板',  'PCBA贴片',             '2026-02-25','2026-03-06',10,8],
+    ['手板1','Sensor板',  '单板Bring up 固件准备','2026-03-17','2026-03-17',1,1],
+    ['手板1','Sensor板',  '单板Bring up',         '2026-02-12','2026-02-28',17,12],
+    ['手板1','Sensor板',  '硬件调测',             '2026-02-25','2026-03-10',14,10],
+    ['手板1','Sensor板',  'EMC测试固件',          '2026-03-31','2026-03-31',1,1],
+    ['手板1','Sensor板',  '热测试固件',           '2026-03-31','2026-03-31',1,1],
+
+    // ── 手板2 ──
+    ['手板2','核心板',    '原理图设计',           '2026-04-03','2026-04-14',12,8],
+    ['手板2','核心板',    '结构DXF提供',          '2026-04-15','2026-04-15',1,1],
+    ['手板2','核心板',    'PCB设计',              '2026-04-16','2026-04-30',15,11],
+    ['手板2','核心板',    'PCB生产',              '2026-05-06','2026-05-20',15,11],
+    ['手板2','核心板',    'PCBA贴片',             '2026-05-21','2026-05-27',7,5],
+    ['手板2','核心板',    '单板Bring up 固件准备','2026-05-27','2026-05-27',1,1],
+    ['手板2','核心板',    '单板Bring up',         '2026-05-28','2026-06-01',5,3],
+    ['手板2','核心板',    '硬件调测',             '2026-06-02','2026-06-23',22,16],
+    ['手板2','核心板',    'EMC测试固件',          '2026-06-08','2026-06-08',1,1],
+    ['手板2','核心板',    '热测试固件',           '2026-06-08','2026-06-08',1,1],
+
+    ['手板2','功率运控板','原理图设计',           '2026-04-03','2026-04-14',12,8],
+    ['手板2','功率运控板','结构DXF提供',          '2026-04-15','2026-04-15',1,1],
+    ['手板2','功率运控板','PCB设计',              '2026-04-16','2026-04-30',15,11],
+    ['手板2','功率运控板','PCB生产',              '2026-05-06','2026-05-20',15,11],
+    ['手板2','功率运控板','PCBA贴片',             '2026-05-21','2026-05-27',7,5],
+    ['手板2','功率运控板','单板Bring up 固件准备','2026-05-27','2026-05-27',1,1],
+    ['手板2','功率运控板','单板Bring up',         '2026-05-28','2026-06-01',5,3],
+    ['手板2','功率运控板','硬件调测',             '2026-06-02','2026-06-23',22,16],
+    ['手板2','功率运控板','EMC测试固件',          '2026-06-08','2026-06-08',1,1],
+    ['手板2','功率运控板','热测试固件',           '2026-06-08','2026-06-08',1,1],
+
+    ['手板2','算力板',    '原理图设计',           '2026-04-03','2026-04-14',12,8],
+    ['手板2','算力板',    '结构DXF提供',          '2026-04-15','2026-04-15',1,1],
+    ['手板2','算力板',    'PCB设计',              '2026-04-16','2026-04-30',15,11],
+    ['手板2','算力板',    'PCB生产',              '2026-05-06','2026-05-20',15,11],
+    ['手板2','算力板',    'PCBA贴片',             '2026-05-21','2026-05-27',7,5],
+    ['手板2','算力板',    '单板Bring up 固件准备','2026-05-27','2026-05-27',1,1],
+    ['手板2','算力板',    '单板Bring up',         '2026-05-28','2026-06-01',5,3],
+    ['手板2','算力板',    '硬件调测',             '2026-06-02','2026-06-23',22,16],
+    ['手板2','算力板',    'EMC测试固件',          '2026-06-08','2026-06-08',1,1],
+    ['手板2','算力板',    '热测试固件',           '2026-06-08','2026-06-08',1,1],
+
+    ['手板2','Sensor板',  '原理图设计',           '2026-04-03','2026-04-14',12,8],
+    ['手板2','Sensor板',  '结构DXF提供',          '2026-04-15','2026-04-15',1,1],
+    ['手板2','Sensor板',  'PCB设计',              '2026-04-16','2026-04-30',15,11],
+    ['手板2','Sensor板',  'PCB生产',              '2026-05-06','2026-05-20',15,11],
+    ['手板2','Sensor板',  'PCBA贴片',             '2026-05-21','2026-05-27',7,5],
+    ['手板2','Sensor板',  '单板Bring up 固件准备','2026-05-27','2026-05-27',1,1],
+    ['手板2','Sensor板',  '单板Bring up',         '2026-05-28','2026-06-01',5,3],
+    ['手板2','Sensor板',  '硬件调测',             '2026-06-02','2026-06-23',22,16],
+    ['手板2','Sensor板',  'EMC测试固件',          '2026-06-08','2026-06-08',1,1],
+    ['手板2','Sensor板',  '热测试固件',           '2026-06-08','2026-06-08',1,1],
+
+    // ── P0 ──
+    ['P0','核心板',    '原理图设计',           '2026-06-16','2026-06-23',8,6],
+    ['P0','核心板',    '结构DXF提供',          '2026-06-23','2026-06-23',1,1],
+    ['P0','核心板',    'PCB设计',              '2026-06-24','2026-07-06',13,9],
+    ['P0','核心板',    'PCB生产',              '2026-07-07','2026-07-21',15,11],
+    ['P0','核心板',    'PCBA贴片',             '2026-07-22','2026-07-28',7,5],
+    ['P0','核心板',    '单板Bring up 固件准备','2026-07-28','2026-07-28',1,1],
+    ['P0','核心板',    '单板Bring up',         '2026-07-29','2026-07-30',2,2],
+    ['P0','核心板',    '硬件调测',             '2026-07-31','2026-08-20',21,15],
+    ['P0','核心板',    'EMC测试固件',          '2026-08-06','2026-08-06',1,1],
+    ['P0','核心板',    '热测试固件',           '2026-08-06','2026-08-06',1,1],
+
+    ['P0','功率运控板','原理图设计',           '2026-06-16','2026-06-23',8,6],
+    ['P0','功率运控板','结构DXF提供',          '2026-06-23','2026-06-23',1,1],
+    ['P0','功率运控板','PCB设计',              '2026-06-24','2026-07-06',13,9],
+    ['P0','功率运控板','PCB生产',              '2026-07-07','2026-07-21',15,11],
+    ['P0','功率运控板','PCBA贴片',             '2026-07-22','2026-07-28',7,5],
+    ['P0','功率运控板','单板Bring up 固件准备','2026-07-28','2026-07-28',1,1],
+    ['P0','功率运控板','单板Bring up',         '2026-07-29','2026-07-30',2,2],
+    ['P0','功率运控板','硬件调测',             '2026-07-31','2026-08-20',21,15],
+    ['P0','功率运控板','EMC测试固件',          '2026-08-06','2026-08-06',1,1],
+    ['P0','功率运控板','热测试固件',           '2026-08-06','2026-08-06',1,1],
+
+    ['P0','算力板',    '原理图设计',           '2026-06-16','2026-06-23',8,6],
+    ['P0','算力板',    '结构DXF提供',          '2026-06-23','2026-06-23',1,1],
+    ['P0','算力板',    'PCB设计',              '2026-06-24','2026-07-06',13,9],
+    ['P0','算力板',    'PCB生产',              '2026-07-07','2026-07-21',15,11],
+    ['P0','算力板',    'PCBA贴片',             '2026-07-22','2026-07-28',7,5],
+    ['P0','算力板',    '单板Bring up 固件准备','2026-07-28','2026-07-28',1,1],
+    ['P0','算力板',    '单板Bring up',         '2026-07-29','2026-07-30',2,2],
+    ['P0','算力板',    '硬件调测',             '2026-07-31','2026-08-20',21,15],
+    ['P0','算力板',    'EMC测试固件',          '2026-08-06','2026-08-06',1,1],
+    ['P0','算力板',    '热测试固件',           '2026-08-06','2026-08-06',1,1],
+
+    ['P0','Sensor板',  '原理图设计',           '2026-06-16','2026-06-23',8,6],
+    ['P0','Sensor板',  '结构DXF提供',          '2026-06-23','2026-06-23',1,1],
+    ['P0','Sensor板',  'PCB设计',              '2026-06-24','2026-07-06',13,9],
+    ['P0','Sensor板',  'PCB生产',              '2026-07-07','2026-07-21',15,11],
+    ['P0','Sensor板',  'PCBA贴片',             '2026-07-22','2026-07-28',7,5],
+    ['P0','Sensor板',  '单板Bring up 固件准备','2026-07-28','2026-07-28',1,1],
+    ['P0','Sensor板',  '单板Bring up',         '2026-07-29','2026-07-30',2,2],
+    ['P0','Sensor板',  '硬件调测',             '2026-07-31','2026-08-20',21,15],
+    ['P0','Sensor板',  'EMC测试固件',          '2026-08-06','2026-08-06',1,1],
+    ['P0','Sensor板',  '热测试固件',           '2026-08-06','2026-08-06',1,1],
+
+    // ── P1 ──
+    ['P1','核心板',    '原理图设计',           '2026-08-14','2026-08-20',7,5],
+    ['P1','核心板',    '结构DXF提供',          '2026-08-20','2026-08-20',1,1],
+    ['P1','核心板',    'PCB设计',              '2026-08-21','2026-08-27',7,5],
+    ['P1','核心板',    'PCB生产',              '2026-08-28','2026-09-11',15,11],
+    ['P1','核心板',    'PCBA贴片',             '2026-09-14','2026-09-18',5,5],
+    ['P1','核心板',    '单板Bring up 固件准备','2026-09-18','2026-09-18',1,1],
+    ['P1','核心板',    '单板Bring up',         '2026-09-21','2026-09-21',1,1],
+    ['P1','核心板',    '硬件调测',             '2026-09-22','2026-10-15',24,18],
+    ['P1','核心板',    'EMC测试固件',          '2026-09-21','2026-09-21',1,1],
+    ['P1','核心板',    '热测试固件',           '2026-09-21','2026-09-21',1,1],
+
+    ['P1','功率运控板','原理图设计',           '2026-08-14','2026-08-20',7,5],
+    ['P1','功率运控板','结构DXF提供',          '2026-08-20','2026-08-20',1,1],
+    ['P1','功率运控板','PCB设计',              '2026-08-21','2026-08-27',7,5],
+    ['P1','功率运控板','PCB生产',              '2026-08-28','2026-09-11',15,11],
+    ['P1','功率运控板','PCBA贴片',             '2026-09-14','2026-09-18',5,5],
+    ['P1','功率运控板','单板Bring up 固件准备','2026-09-18','2026-09-18',1,1],
+    ['P1','功率运控板','单板Bring up',         '2026-09-21','2026-09-21',1,1],
+    ['P1','功率运控板','硬件调测',             '2026-09-22','2026-10-15',24,18],
+    ['P1','功率运控板','EMC测试固件',          '2026-09-21','2026-09-21',1,1],
+    ['P1','功率运控板','热测试固件',           '2026-09-21','2026-09-21',1,1],
+
+    ['P1','算力板',    '原理图设计',           '2026-08-14','2026-08-20',7,5],
+    ['P1','算力板',    '结构DXF提供',          '2026-08-20','2026-08-20',1,1],
+    ['P1','算力板',    'PCB设计',              '2026-08-21','2026-08-27',7,5],
+    ['P1','算力板',    'PCB生产',              '2026-08-28','2026-09-11',15,11],
+    ['P1','算力板',    'PCBA贴片',             '2026-09-14','2026-09-18',5,5],
+    ['P1','算力板',    '单板Bring up 固件准备','2026-09-18','2026-09-18',1,1],
+    ['P1','算力板',    '单板Bring up',         '2026-09-21','2026-09-21',1,1],
+    ['P1','算力板',    '硬件调测',             '2026-09-22','2026-10-15',24,18],
+    ['P1','算力板',    'EMC测试固件',          '2026-09-21','2026-09-21',1,1],
+    ['P1','算力板',    '热测试固件',           '2026-09-21','2026-09-21',1,1],
+
+    ['P1','Sensor板',  '原理图设计',           '2026-08-14','2026-08-20',7,5],
+    ['P1','Sensor板',  '结构DXF提供',          '2026-08-20','2026-08-20',1,1],
+    ['P1','Sensor板',  'PCB设计',              '2026-08-21','2026-08-27',7,5],
+    ['P1','Sensor板',  'PCB生产',              '2026-08-28','2026-09-11',15,11],
+    ['P1','Sensor板',  'PCBA贴片',             '2026-09-14','2026-09-18',5,5],
+    ['P1','Sensor板',  '单板Bring up 固件准备','2026-09-18','2026-09-18',1,1],
+    ['P1','Sensor板',  '单板Bring up',         '2026-09-21','2026-09-21',1,1],
+    ['P1','Sensor板',  '硬件调测',             '2026-09-22','2026-10-15',24,18],
+    ['P1','Sensor板',  'EMC测试固件',          '2026-09-21','2026-09-21',1,1],
+    ['P1','Sensor板',  '热测试固件',           '2026-09-21','2026-09-21',1,1],
+
+    // ── P2 ──
+    ['P2','核心板',    '原理图设计',           '2026-10-12','2026-10-18',7,5],
+    ['P2','核心板',    '结构DXF提供',          '2026-10-15','2026-10-15',1,1],
+    ['P2','核心板',    'PCB设计',              '2026-10-16','2026-10-22',7,5],
+    ['P2','核心板',    'PCB生产',              '2026-10-26','2026-11-09',15,11],
+    ['P2','核心板',    'PCBA贴片',             '2026-11-10','2026-11-14',5,4],
+    ['P2','核心板',    '单板Bring up 固件准备','2026-11-16','2026-11-16',1,1],
+    ['P2','核心板',    '单板Bring up',         '2026-11-17','2026-11-17',1,1],
+    ['P2','核心板',    '硬件调测',             '2026-11-18','2026-12-11',24,18],
+    ['P2','核心板',    'EMC测试固件',          '2026-11-17','2026-11-17',1,1],
+    ['P2','核心板',    '热测试固件',           '2026-11-17','2026-11-17',1,1],
+
+    ['P2','功率运控板','原理图设计',           '2026-10-12','2026-10-18',7,5],
+    ['P2','功率运控板','结构DXF提供',          '2026-10-15','2026-10-15',1,1],
+    ['P2','功率运控板','PCB设计',              '2026-10-16','2026-10-22',7,5],
+    ['P2','功率运控板','PCB生产',              '2026-10-26','2026-11-09',15,11],
+    ['P2','功率运控板','PCBA贴片',             '2026-11-10','2026-11-14',5,4],
+    ['P2','功率运控板','单板Bring up 固件准备','2026-11-16','2026-11-16',1,1],
+    ['P2','功率运控板','单板Bring up',         '2026-11-17','2026-11-17',1,1],
+    ['P2','功率运控板','硬件调测',             '2026-11-18','2026-12-11',24,18],
+    ['P2','功率运控板','EMC测试固件',          '2026-11-17','2026-11-17',1,1],
+    ['P2','功率运控板','热测试固件',           '2026-11-17','2026-11-17',1,1],
+
+    ['P2','算力板',    '原理图设计',           '2026-10-12','2026-10-18',7,5],
+    ['P2','算力板',    '结构DXF提供',          '2026-10-15','2026-10-15',1,1],
+    ['P2','算力板',    'PCB设计',              '2026-10-16','2026-10-22',7,5],
+    ['P2','算力板',    'PCB生产',              '2026-10-26','2026-11-09',15,11],
+    ['P2','算力板',    'PCBA贴片',             '2026-11-10','2026-11-14',5,4],
+    ['P2','算力板',    '单板Bring up 固件准备','2026-11-16','2026-11-16',1,1],
+    ['P2','算力板',    '单板Bring up',         '2026-11-17','2026-11-17',1,1],
+    ['P2','算力板',    '硬件调测',             '2026-11-18','2026-12-11',24,18],
+    ['P2','算力板',    'EMC测试固件',          '2026-11-17','2026-11-17',1,1],
+    ['P2','算力板',    '热测试固件',           '2026-11-17','2026-11-17',1,1],
+
+    ['P2','Sensor板',  '原理图设计',           '2026-10-12','2026-10-18',7,5],
+    ['P2','Sensor板',  '结构DXF提供',          '2026-10-15','2026-10-15',1,1],
+    ['P2','Sensor板',  'PCB设计',              '2026-10-16','2026-10-22',7,5],
+    ['P2','Sensor板',  'PCB生产',              '2026-10-26','2026-11-09',15,11],
+    ['P2','Sensor板',  'PCBA贴片',             '2026-11-10','2026-11-14',5,4],
+    ['P2','Sensor板',  '单板Bring up 固件准备','2026-11-16','2026-11-16',1,1],
+    ['P2','Sensor板',  '单板Bring up',         '2026-11-17','2026-11-17',1,1],
+    ['P2','Sensor板',  '硬件调测',             '2026-11-18','2026-12-11',24,18],
+    ['P2','Sensor板',  'EMC测试固件',          '2026-11-17','2026-11-17',1,1],
+    ['P2','Sensor板',  '热测试固件',           '2026-11-17','2026-11-17',1,1],
+
+    // ── 中试量产 ──
+    ['中试量产','核心板',    '中试量产','2026-12-01','2026-12-01',1,1],
+    ['中试量产','功率运控板','中试量产','2026-12-01','2026-12-01',1,1],
+    ['中试量产','算力板',    '中试量产','2026-12-01','2026-12-01',1,1],
+    ['中试量产','Sensor板',  '中试量产','2026-12-01','2026-12-01',1,1],
+  ];
+
+  // 按模块 + 阶段分组，先插入组行再插子任务
+  const seen = new Set();
+  RAW.forEach(([phase, module, sub, start, end, natural, workdays]) => {
+    const groupKey = module + '|' + phase;
+    if (!seen.has(groupKey)) {
+      seen.add(groupKey);
+      tasks.push({id:_tid++, group:true, phase, name:`${module} - ${phase}`,
+        module, person:'', start, end, natural, workdays, progress:0, predecessors:[]});
+    }
+    tasks.push({id:_tid++, group:false, phase,
+      name: getTaskName(module, phase, sub),
+      module, person:'', start, end, natural, workdays, progress:0, predecessors:[]});
+  });
+  // 更新组行汇总
+})();
+
+// 更新组行的日期范围
+function recalcGroups() {
+  tasks.filter(t=>t.group).forEach(g => {
+    const children = tasks.filter(c => !c.group && c.phase===g.phase && c.module===g.module && c.start);
+    if (!children.length) return;
+    g.start = children.map(c=>c.start).sort()[0];
+    const ends = children.filter(c=>c.end).map(c=>c.end).sort().reverse();
+    g.end = ends[0] || '';
+    g.natural = g.start && g.end ? calcNaturalDays(g.start,g.end) : 0;
+    g.workdays = g.start && g.end ? calcWorkdays(g.start,g.end) : 0;
+    g.progress = children.length ? Math.round(children.reduce((s,c)=>s+c.progress,0)/children.length) : 0;
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 渲染控制
+// ═══════════════════════════════════════════════════
+const TODAY = fmt(new Date());
+let selectedId = null;
+let ctxTargetId = null;
+let editingId = null;
+let nextId = () => (Math.max(0,...tasks.map(t=>t.id))+1);
+
+function getFilteredTasks() {
+  const s = document.getElementById('searchInput').value.toLowerCase();
+  const fm = document.getElementById('filterModule').value;
+  const fp = document.getElementById('filterPhase').value;
+  const fper = document.getElementById('filterPerson').value;
+  return tasks.filter(t => {
+    if (fm && t.module !== fm) return false;
+    if (fp && t.phase !== fp) return false;
+    if (fper && t.person !== fper) return false;
+    if (s && !t.name.toLowerCase().includes(s)) return false;
+    return true;
+  });
+}
+
+function render() {
+  recalcGroups();
+  renderStatsTopbar();
+  renderTaskList();
+  renderGantt();
+  renderFilters();
+}
+
+// ─── 统计条 ───
+function renderStatsTopbar() {
+  const sub = tasks.filter(t=>!t.group);
+  const total = sub.length, done = sub.filter(t=>t.progress===100).length;
+  const inprog = sub.filter(t=>t.progress>0&&t.progress<100).length;
+  const overdue = sub.filter(t=>t.end&&t.end<TODAY&&t.progress<100).length;
+  const totalWD = sub.reduce((s,t)=>s+t.workdays,0);
+  document.getElementById('statsTopbar').innerHTML = `
+    <div class="stat-item"><div class="stat-dot" style="background:#1a73e8"></div>总任务 ${total}</div>
+    <div class="stat-item"><div class="stat-dot" style="background:#43a047"></div>已完成 ${done}</div>
+    <div class="stat-item"><div class="stat-dot" style="background:#e65100"></div>进行中 ${inprog}</div>
+    <div class="stat-item"><div class="stat-dot" style="background:#9e9e9e"></div>未开始 ${total-done-inprog}</div>
+    <div class="stat-item"><div class="stat-dot" style="background:#c62828"></div>已逾期 ${overdue}</div>
+    <div class="stat-item" style="margin-left:auto"><div class="stat-dot" style="background:#8e24aa"></div>总工作日 ${totalWD} 天</div>`;
+}
+
+// ─── 左侧任务列表 ───
+function renderTaskList() {
+  const filtered = getFilteredTasks();
+  let html = '', idx = 0;
+  filtered.forEach(t => {
+    const isGrp = t.group;
+    const sel = t.id === selectedId ? ' selected' : '';
+    const mod = modules.find(m=>m.id===t.module);
+    const color = mod ? mod.color : '#1a73e8';
+    if (isGrp) {
+      const startDisp = t.start ? t.start.slice(5) : '—';
+      const endDisp   = t.end   ? t.end.slice(5)   : '—';
+      const wdDisp    = t.workdays > 0 ? t.workdays+'d' : '—';
+      const pct = t.progress;
+      const fillColor = pct===100 ? '#43a047' : pct>=50 ? '#1e88e5' : '#e65100';
+      html += `<div class="task-row group${sel}" data-id="${t.id}"
+        onclick="selectTask(${t.id})"
+        oncontextmenu="showCtx(event,${t.id})">
+        <span class="tr-idx"></span>
+        <span class="tr-name" style="color:${color}" title="${t.module} · ${t.phase}">
+          <span style="font-size:10px;opacity:.7;margin-right:4px">▶</span>${t.module} — ${t.phase}
+        </span>
+        <span class="tr-person"></span>
+        <span class="tr-date" style="color:#78909c">${startDisp}</span>
+        <span class="tr-date" style="color:#78909c">${endDisp}</span>
+        <span class="tr-wd" style="color:#78909c">${wdDisp}</span>
+        <span class="tr-pct">
+          <div class="pct-label">${pct}%</div>
+          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+        </span>
+      </div>`;
+    } else {
+      idx++;
+      const pct = t.progress;
+      const fillColor = pct===100 ? '#43a047' : pct>=50 ? '#1e88e5' : '#e65100';
+      const isOD = t.end && t.end < TODAY && pct < 100;
+      const startDisp = t.start ? t.start.slice(5) : '—';
+      const endDisp   = t.end   ? t.end.slice(5)   : '—';
+      const wdDisp    = t.workdays > 0 ? t.workdays+'d' : '—';
+      // 从任务名称中提取子任务部分（去掉「模块_阶段_」前缀显示更清晰）
+      const nameParts = t.name.split('_');
+      const displayName = nameParts.length >= 3 ? nameParts.slice(2).join('_') : t.name;
+      html += `<div class="task-row sub${sel}" data-id="${t.id}"
+        onclick="selectTask(${t.id})"
+        ondblclick="showEditTask(${t.id})"
+        oncontextmenu="showCtx(event,${t.id})">
+        <span class="tr-idx">${idx}</span>
+        <span class="tr-name indent" title="${t.name}" style="${isOD?'color:#c62828':''}">${displayName}</span>
+        <span class="tr-person" title="${t.person}">${t.person||'—'}</span>
+        <span class="tr-date" style="${isOD?'color:#c62828':''}">${startDisp}</span>
+        <span class="tr-date" style="${isOD?'color:#c62828':''}">${endDisp}</span>
+        <span class="tr-wd">${wdDisp}</span>
+        <span class="tr-pct">
+          <div class="pct-label">${pct}%</div>
+          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+        </span>
+      </div>`;
+    }
+  });
+  document.getElementById('taskScroll').innerHTML = html || '<div style="padding:20px;text-align:center;color:#aaa">无匹配任务</div>';
+}
+
+// ─── 甘特缩放 ───
+let ganttDayW = 16;
+function zoomGantt(delta) {
+  const steps = [8, 12, 16, 20, 24, 32];
+  const idx = steps.indexOf(ganttDayW);
+  const newIdx = Math.max(0, Math.min(steps.length-1, idx + delta));
+  ganttDayW = steps[newIdx];
+  document.getElementById('ganttZoomLabel').textContent = ganttDayW;
+  renderGantt();
+}
+function ganttScrollToday() {
+  const wrap = document.getElementById('ganttScrollWrap');
+  const grid = document.getElementById('ganttGrid');
+  // 找 today 列的位置
+  const todayEl = grid.querySelector('.today');
+  if (todayEl) {
+    wrap.scrollLeft = Math.max(0, todayEl.offsetLeft - wrap.clientWidth / 2);
+  }
+}
+
+// ─── 右侧甘特图 ───
+function renderGantt() {
+  const filtered = getFilteredTasks();
+  if (!filtered.length) { document.getElementById('ganttGrid').innerHTML=''; return; }
+  const starts = filtered.filter(t=>t.start).map(t=>t.start).sort();
+  const ends = filtered.filter(t=>t.end).map(t=>t.end).sort().reverse();
+  if (!starts.length) return;
+  const minDate = starts[0];
+  const maxDate = ends[0] || addNaturalDays(minDate, 90);
+
+  // 生成日期数组
+  const dates = [];
+  let cur = new Date(minDate);
+  const endD = new Date(maxDate);
+  while (cur <= endD) { dates.push(fmt(cur)); cur.setDate(cur.getDate()+1); }
+
+  const DAY_W = ganttDayW; // px per day
+
+  // ── 表头月份行
+  const months = {};
+  dates.forEach(d => { const m=d.slice(0,7); if(!months[m])months[m]=0; months[m]++; });
+  let monthHtml = '';
+  Object.entries(months).forEach(([m,cnt]) => {
+    monthHtml += `<div class="g-month-cell" style="width:${cnt*DAY_W}px;min-width:${cnt*DAY_W}px">${m.replace('-','年')}月</div>`;
+  });
+
+  // ── 表头日期行
+  let dayHtml = '';
+  dates.forEach(d => {
+    const isT = isToday(d), isH = isHolidayDate(d), isW = isWeekendDate(d)&&!isWorkdayExtra(d), isE = isWorkdayExtra(d);
+    let cls = '';
+    if (isT) cls='today'; else if (isH) cls='holiday'; else if (isE) cls='workday-extra'; else if (isW) cls='weekend';
+    const wk = ['日','一','二','三','四','五','六'][new Date(d).getDay()];
+    dayHtml += `<div class="g-day-cell ${cls}" style="width:${DAY_W}px;min-width:${DAY_W}px" title="${d}">
+      <span class="d-num">${parseInt(d.slice(8))}</span>
+      <span class="d-week">${wk}</span>
+    </div>`;
+  });
+
+  document.getElementById('ganttHead').innerHTML =
+    `<div class="gantt-head-months">${monthHtml}</div>
+     <div class="gantt-head-days">${dayHtml}</div>`;
+
+  // ── 甘特行
+  const totalW = dates.length * DAY_W;
+  let rowsHtml = '';
+  filtered.forEach(t => {
+    const isGrp = t.group;
+    const sel = t.id === selectedId ? ' selected' : '';
+    const mod = modules.find(m=>m.id===t.module);
+    const barColor = mod ? mod.color : '#1e88e5';
+
+    // 背景格
+    let cellsHtml = '';
+    dates.forEach(d => {
+      const isH = isHolidayDate(d), isW = isWeekendDate(d)&&!isWorkdayExtra(d);
+      const isT = isToday(d), isE = isWorkdayExtra(d);
+      let bg = '';
+      if (isH) bg='holiday-bg'; else if (isE) bg='workday-extra-bg'; else if (isW) bg='weekend-bg';
+      if (isT) bg+=' today-col';
+      cellsHtml += `<div class="g-cell ${bg}" style="width:${DAY_W}px;min-width:${DAY_W}px"></div>`;
+    });
+
+    // 甘特条
+    let barHtml = '';
+    if (t.start && t.end) {
+      const s = dates.indexOf(t.start), e = dates.indexOf(t.end);
+      if (s >= 0) {
+        const eIdx = e >= 0 ? e : dates.length-1;
+        const left = s * DAY_W;
+        const width = Math.max((eIdx - s + 1) * DAY_W - 2, DAY_W-2);
+        if (isGrp) {
+          barHtml = `<div class="g-bar g-bar-group" style="left:${left}px;width:${width}px;background:${barColor};opacity:.6"></div>`;
+        } else {
+          const doneW = Math.round(width * t.progress / 100);
+          barHtml = `<div class="g-bar g-bar-task" style="left:${left}px;width:${width}px;background:${barColor};opacity:.75"></div>
+            <div class="g-bar g-bar-done" style="left:${left}px;width:${doneW}px;background:${barColor};opacity:1"></div>`;
+        }
+      }
+    }
+
+    rowsHtml += `<div class="gantt-row${isGrp?' group':''}${sel}" data-id="${t.id}" style="width:${totalW}px"
+      onclick="selectTask(${t.id})" ondblclick="showEditTask(${t.id})" oncontextmenu="showCtx(event,${t.id})">
+      <div style="display:flex;position:relative;width:${totalW}px;height:100%">${cellsHtml}${barHtml}</div>
+    </div>`;
+  });
+
+  document.getElementById('ganttRows').innerHTML = rowsHtml;
+  document.getElementById('ganttGrid').style.width = totalW+'px';
+
+  // 同步左右滚动（行高同步）
+  syncScroll();
+}
+
+// 同步任务列表和甘特图的滚动
+function syncScroll() {
+  const ts = document.getElementById('taskScroll');
+  const gs = document.getElementById('ganttScrollWrap');
+  ts._sync = true;
+  gs._sync = true;
+  ts.onscroll = function() {
+    if (!this._sync) return; gs._sync=false; gs.scrollTop=this.scrollTop; setTimeout(()=>gs._sync=true,50);
+  };
+  gs.onscroll = function() {
+    if (!this._sync) return; ts._sync=false; ts.scrollTop=this.scrollTop; setTimeout(()=>ts._sync=true,50);
+  };
+}
+
+// 甘特图收起/展开
+let ganttVisible = true;
+function toggleGantt() {
+  ganttVisible = !ganttVisible;
+  const rp = document.getElementById('rightPanel');
+  const btn = document.getElementById('ganttToggleBtn');
+  if (ganttVisible) {
+    rp.classList.remove('collapsed');
+    btn.textContent = '◀';
+    btn.title = '收起甘特图';
+  } else {
+    rp.classList.add('collapsed');
+    btn.textContent = '▶';
+    btn.title = '展开甘特图';
+  }
+}
+
+// 选中任务（左右同步高亮）
+function selectTask(id) {
+  selectedId = id;
+  document.querySelectorAll('[data-id]').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.id)===id);
+  });
+}
+
+// ─── 过滤器更新 ───
+function renderFilters() {
+  // 模块
+  const ms = document.getElementById('filterModule');
+  const cv = ms.value;
+  ms.innerHTML = '<option value="">所有模块</option>' + modules.map(m=>`<option value="${m.id}" ${m.id===cv?'selected':''}>${m.name}</option>`).join('');
+  // 阶段
+  const ps = document.getElementById('filterPhase');
+  const cpv = ps.value;
+  ps.innerHTML = '<option value="">所有阶段</option>' + PHASES.map(p=>`<option value="${p}" ${p===cpv?'selected':''}>${p}</option>`).join('');
+  // 跟进人
+  const pers = [...new Set(tasks.filter(t=>t.person).map(t=>t.person))];
+  const perSel = document.getElementById('filterPerson');
+  const cpv2 = perSel.value;
+  perSel.innerHTML = '<option value="">所有人员</option>' + pers.map(p=>`<option value="${p}" ${p===cpv2?'selected':''}>${p}</option>`).join('');
+  // 模态框下拉
+  const fm = document.getElementById('f_module');
+  const fp = document.getElementById('f_phase');
+  if (fm) fm.innerHTML = modules.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  if (fp) fp.innerHTML = PHASES.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// 任务模态框
+// ═══════════════════════════════════════════════════
+function showAddTask(moduleId, phaseId) {
+  editingId = null;
+  renderFilters();
+  document.getElementById('modalTitle').textContent = '新增任务';
+  document.getElementById('f_name').value = '';
+  document.getElementById('f_person').value = '';
+  document.getElementById('f_start').value = TODAY;
+  document.getElementById('f_end').value = '';
+  document.getElementById('f_natural').value = 1;
+  document.getElementById('f_workdays').value = 0;
+  document.getElementById('f_progress').value = 0;
+  document.getElementById('f_pct_label').textContent = '0%';
+  document.getElementById('f_dayinfo').textContent = '';
+  if (moduleId) document.getElementById('f_module').value = moduleId;
+  if (phaseId)  document.getElementById('f_phase').value  = phaseId;
+  renderPredSelect(null);
+  document.getElementById('taskModal').classList.add('show');
+}
+// ═══════════════════════════════════════════════════
+// 前置任务 & 自动时序计算
+// ═══════════════════════════════════════════════════
+
+// 填充前置任务下拉（排除自身及其子任务，避免循环依赖）
+function renderPredSelect(selfId) {
+  const sel = document.getElementById('f_pred');
+  sel.innerHTML = tasks
+    .filter(t => !t.group && t.id !== selfId)
+    .map(t => {
+      const label = '[' + t.id + '] ' + t.module + ' / ' + t.phase + ' / ' + t.name.split('_').slice(2).join('_') || t.name;
+      return '<option value="' + t.id + '">' + label + '</option>';
+    }).join('');
+}
+
+// 获取已选前置任务 id 数组
+function getSelectedPreds() {
+  const sel = document.getElementById('f_pred');
+  return Array.from(sel.selectedOptions).map(o => parseInt(o.value));
+}
+
+// 设置前置任务选中状态（从任务的 predecessors 字段）
+function setSelectedPreds(predIds) {
+  const sel = document.getElementById('f_pred');
+  const ids = new Set(predIds || []);
+  Array.from(sel.options).forEach(o => { o.selected = ids.has(parseInt(o.value)); });
+}
+
+// 根据前置任务集合，计算本任务最早启动日（前置全部完成后下一工作日）
+function calcStartFromPreds(predIds) {
+  if (!predIds || !predIds.length) return null;
+  let latest = '';
+  predIds.forEach(pid => {
+    const pt = tasks.find(t => t.id === pid);
+    if (pt && pt.end && pt.end > latest) latest = pt.end;
+  });
+  if (!latest) return null;
+  // 下一个自然日（不跳工作日，保持原有逻辑一致）
+  const d = new Date(latest);
+  d.setDate(d.getDate() + 1);
+  return fmt(d);
+}
+
+// 拓扑排序重算所有含前置任务的任务时间
+function recalcAllByPred() {
+  const hasPred = tasks.filter(t => !t.group && t.predecessors && t.predecessors.length);
+  if (!hasPred.length) { alert('没有设置前置任务的任务，无需重算。'); return; }
+
+  // 最多迭代 tasks.length 轮（处理链式依赖）
+  let changed = true, rounds = 0;
+  while (changed && rounds < tasks.length) {
+    changed = false; rounds++;
+    hasPred.forEach(t => {
+      const newStart = calcStartFromPreds(t.predecessors);
+      if (!newStart) return;
+      if (newStart !== t.start) {
+        t.start = newStart;
+        if (t.natural > 0) {
+          t.end = addNaturalDays(newStart, t.natural);
+          t.workdays = calcWorkdays(newStart, t.end);
+        }
+        changed = true;
+      }
+    });
+  }
+  recalcGroups();
+  saveData();
+  render();
+  alert('时序重算完成（共 ' + hasPred.length + ' 个任务受前置关系影响）');
+}
+
+function showEditTask(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t || t.group) { showAddTask(); return; }
+  editingId = id;
+  renderFilters();
+  document.getElementById('modalTitle').textContent = '编辑任务';
+  document.getElementById('f_name').value = t.name;
+  document.getElementById('f_module').value = t.module;
+  document.getElementById('f_phase').value = t.phase;
+  document.getElementById('f_person').value = t.person;
+  document.getElementById('f_start').value = t.start;
+  document.getElementById('f_end').value = t.end;
+  document.getElementById('f_natural').value = t.natural;
+  document.getElementById('f_workdays').value = t.workdays;
+  document.getElementById('f_progress').value = t.progress;
+  document.getElementById('f_pct_label').textContent = t.progress+'%';
+  renderPredSelect(t.id);
+  setSelectedPreds(t.predecessors || []);
+  updateDayInfo();
+  document.getElementById('taskModal').classList.add('show');
+}
+
+// 启动日期变更：保持自然日不变，推算完成日期
+function onStartChange() {
+  const s = document.getElementById('f_start').value;
+  const n = parseInt(document.getElementById('f_natural').value);
+  if (s && n > 0) {
+    const e = addNaturalDays(s, n);
+    document.getElementById('f_end').value = e;
+    document.getElementById('f_workdays').value = calcWorkdays(s, e);
+  }
+  updateDayInfo();
+}
+// 完成日期变更：反算自然日和工作日
+function onEndChange() {
+  const s = document.getElementById('f_start').value;
+  const e = document.getElementById('f_end').value;
+  if (s && e) {
+    document.getElementById('f_natural').value = calcNaturalDays(s, e);
+    document.getElementById('f_workdays').value = calcWorkdays(s, e);
+  }
+  updateDayInfo();
+}
+// 自然日变更：保持启动日期不变，推算完成日期
+function calcEndFromDays() {
+  const s = document.getElementById('f_start').value;
+  const n = parseInt(document.getElementById('f_natural').value);
+  if (s && n > 0) {
+    const e = addNaturalDays(s, n);
+    document.getElementById('f_end').value = e;
+    document.getElementById('f_workdays').value = calcWorkdays(s, e);
+    updateDayInfo();
+  }
+}
+// 工作日变更：保持启动日期不变，推算完成日期
+function calcEndFromWorkdays() {
+  const s = document.getElementById('f_start').value;
+  const w = parseInt(document.getElementById('f_workdays').value);
+  if (s && w > 0) {
+    const e = addWorkdays(s, w);
+    document.getElementById('f_end').value = e;
+    document.getElementById('f_natural').value = calcNaturalDays(s, e);
+    updateDayInfo();
+  }
+}
+
+function updateDayInfo() {
+  const s = document.getElementById('f_start').value;
+  const e = document.getElementById('f_end').value;
+  const wd = document.getElementById('f_workdays').value;
+  if (s && e) {
+    const hd = (() => {
+      let cnt=0, cur=new Date(s), end=new Date(e);
+      while(cur<=end){const ds=fmt(cur);if(!isWorkday(ds)&&!(new Date(ds).getDay()===0||new Date(ds).getDay()===6))cnt++;cur.setDate(cur.getDate()+1);}
+      return cnt;
+    })();
+    document.getElementById('f_dayinfo').textContent = `工作日 ${wd} 天（含假期 ${hd} 天休息）`;
+  }
+}
+
+function saveTask() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('请填写任务名称'); return; }
+  const s = document.getElementById('f_start').value;
+  const e = document.getElementById('f_end').value;
+  const predIds = getSelectedPreds();
+  // 如果设置了前置任务，自动推算启动日
+  let effStart = s;
+  if (predIds.length) {
+    const autoStart = calcStartFromPreds(predIds);
+    if (autoStart) effStart = autoStart;
+  }
+  const effEnd = effStart !== s
+    ? addNaturalDays(effStart, parseInt(document.getElementById('f_natural').value) || calcNaturalDays(s,e))
+    : e;
+  const data = {
+    name, module: document.getElementById('f_module').value,
+    phase: document.getElementById('f_phase').value,
+    person: document.getElementById('f_person').value,
+    start: effStart, end: effEnd,
+    natural: calcNaturalDays(effStart, effEnd),
+    workdays: calcWorkdays(effStart, effEnd),
+    progress: parseInt(document.getElementById('f_progress').value),
+    predecessors: predIds,
+    group: false
+  };
+  if (editingId) {
+    const t = tasks.find(t=>t.id===editingId);
+    Object.assign(t, data);
+  } else {
+    // 检查是否需要自动插入到对应的组
+    const nid = nextId();
+    // 找到该 module+phase 的最后一个子任务后插入
+    let insertIdx = -1;
+    for (let i=0;i<tasks.length;i++) {
+      if (!tasks[i].group && tasks[i].module===data.module && tasks[i].phase===data.phase) insertIdx=i;
+    }
+    const newTask = {...data, id:nid};
+    if (insertIdx >= 0) tasks.splice(insertIdx+1,0,newTask);
+    else tasks.push(newTask);
+  }
+  saveData();
+  closeModal('taskModal');
+  render();
+}
+
+// ═══════════════════════════════════════════════════
+// 右键菜单
+// ═══════════════════════════════════════════════════
+function showCtx(e, id) {
+  e.preventDefault();
+  ctxTargetId = id;
+  const m = document.getElementById('ctxMenu');
+  m.style.left = Math.min(e.clientX, window.innerWidth-160)+'px';
+  m.style.top = Math.min(e.clientY, window.innerHeight-120)+'px';
+  m.classList.add('show');
+}
+function ctxEdit() { closeCtx(); showEditTask(ctxTargetId); }
+function ctxAddSub() {
+  closeCtx();
+  const t = tasks.find(t=>t.id===ctxTargetId);
+  if (!t) return;
+  showAddTask();
+  setTimeout(()=>{
+    document.getElementById('f_module').value = t.module;
+    document.getElementById('f_phase').value  = t.phase;
+    document.getElementById('f_start').value  = t.end || t.start;
+  },50);
+}
+function ctxDelete() {
+  closeCtx();
+  const t = tasks.find(t=>t.id===ctxTargetId);
+  if (!t) return;
+  const label = t.group ? `阶段"${t.phase}"及其所有子任务` : `任务"${t.name}"`;
+  if (!confirm(`确认删除 ${label}？`)) return;
+  if (t.group) {
+    tasks = tasks.filter(x => !(x.module===t.module && x.phase===t.phase));
+  } else {
+    tasks = tasks.filter(x => x.id !== ctxTargetId);
+  }
+  saveData();
+  render();
+}
+function closeCtx() { document.getElementById('ctxMenu').classList.remove('show'); }
+document.addEventListener('click', closeCtx);
+
+// ═══════════════════════════════════════════════════
+// 假期管理
+// ═══════════════════════════════════════════════════
+let holViewYear = 2026;
+
+function getHolYears() {
+  const ys = new Set(holidays.map(h => h.year || parseInt(h.date.slice(0,4))));
+  for (let y=2026;y<=2035;y++) ys.add(y);
+  return [...ys].sort();
+}
+
+function renderYearTabs() {
+  document.getElementById('yearTabs').innerHTML = getHolYears().map(y =>
+    '<button class="year-tab' + (y===holViewYear?' active':'') + '" onclick="setHolYear(' + y + ')">' + y + '</button>'
+  ).join('');
+}
+
+function setHolYear(y) {
+  holViewYear = y;
+  renderYearTabs();
+  renderHolidayTable();
+}
+
+function renderHolidayTable() {
+  const yr = holViewYear;
+  const list = holidays
+    .filter(h => (h.year||parseInt(h.date.slice(0,4))) === yr)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const offCnt = list.filter(h=>h.type==='holiday').length;
+  const extCnt = list.filter(h=>h.type==='workday').length;
+  document.getElementById('holYearTitle').textContent = yr + ' 年节假日';
+  document.getElementById('holYearStats').textContent = '共 ' + offCnt + ' 个放假日 · ' + extCnt + ' 个调休上班日';
+  const groups = {}, nameOrder = [];
+  list.forEach(h => {
+    if (!groups[h.name]) { groups[h.name]=[]; nameOrder.push(h.name); }
+    groups[h.name].push(h);
+  });
+  let html = '';
+  nameOrder.forEach(name => {
+    groups[name].forEach((h, i) => {
+      const tag = h.type==='holiday'
+        ? '<span class="tag tag-holiday">放假</span>'
+        : '<span class="tag tag-workday">调休上班</span>';
+      const wk = ['日','一','二','三','四','五','六'][new Date(h.date).getDay()];
+      const key = encodeURIComponent(h.date + '|' + h.type);
+      html += `<tr>
+        <td>${i===0?'<strong>'+name+'</strong>':''}</td>
+        <td style="color:#78909c">${h.year||yr}</td>
+        <td>${h.date}</td>
+        <td style="color:#78909c">周${wk}</td>
+        <td>${tag}</td>
+        <td><button onclick="deleteHoliday('${key}')" style="border:none;background:none;color:#c62828;cursor:pointer;font-size:12px">删除</button></td>
+      </tr>`;
+    });
+  });
+  if (!html) html = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">${yr} 年暂无数据，可手动添加</td></tr>`;
+  document.getElementById('holidayTbody').innerHTML = html;
+}
+
+function renderHolidays() {
+  renderYearTabs();
+  renderHolidayTable();
+  render();
+}
+
+function toggleBatchMode() {
+  const on = document.getElementById('h_batch_mode').checked;
+  document.getElementById('h_single_row').style.display = on ? 'none' : 'flex';
+  document.getElementById('h_batch_wrap').style.display = on ? 'flex' : 'none';
+}
+
+function showAddHoliday(type) {
+  document.getElementById('h_type_sel').value = type;
+  document.getElementById('hModalTitle').textContent = type==='holiday'?'添加放假日':'添加调休上班日';
+  document.getElementById('h_name').value = '';
+  document.getElementById('h_date').value = '';
+  document.getElementById('h_batch').value = '';
+  document.getElementById('h_batch_mode').checked = false;
+  toggleBatchMode();
+  const ysel = document.getElementById('h_year');
+  ysel.innerHTML = getHolYears().map(y=>'<option value="' + y + '"' + (y===holViewYear?' selected':'') + '>' + y + '</option>').join('');
+  document.getElementById('holidayModal').classList.add('show');
+}
+
+function saveHoliday() {
+  const name = document.getElementById('h_name').value.trim();
+  if (!name) { alert('请填写节日名称'); return; }
+  const type  = document.getElementById('h_type_sel').value;
+  const year  = parseInt(document.getElementById('h_year').value);
+  const batch = document.getElementById('h_batch_mode').checked;
+  let dates = [];
+  if (batch) {
+    dates = document.getElementById('h_batch').value
+      .split(/[\n,，\s]+/).map(s=>s.trim())
+      .filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s));
+    if (!dates.length) { alert('请输入有效日期（格式 YYYY-MM-DD）'); return; }
+  } else {
+    const d = document.getElementById('h_date').value;
+    if (!d) { alert('请选择日期'); return; }
+    dates = [d];
+  }
+  let added = 0;
+  dates.forEach(date => {
+    if (!holidays.find(h=>h.date===date&&h.type===type)) {
+      holidays.push({name, year, date, type});
+      added++;
+    }
+  });
+  if (!added) { alert('所选日期已全部存在'); return; }
+  saveData();
+  closeModal('holidayModal');
+  renderHolidays();
+}
+function deleteHoliday(key) {
+  const decoded = decodeURIComponent(key);
+  const parts = decoded.split('|');
+  const date = parts[0], type = parts[1];
+  if (!confirm('确认删除 ' + date + ' (' + (type==='holiday'?'放假日':'调休上班') + ')？')) return;
+  holidays = holidays.filter(h=>!(h.date===date&&h.type===type));
+  saveData();
+  renderHolidays();
+}
+
+// ═══════════════════════════════════════════════════
+// 模块管理
+// ═══════════════════════════════════════════════════
+
+// track expanded state per module
+const modExpanded = {};
+
+function toggleModPanel(id) {
+  modExpanded[id] = !modExpanded[id];
+  renderModules();
+}
+
+function checkTask(id, checked) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  t.progress = checked ? 100 : 0;
+  saveData();
+  renderModules();
+  renderStatsTopbar();
+  if (document.getElementById('page-main').classList.contains('active')) renderGantt();
+}
+
+function renderModules() {
+  let html = '';
+  modules.forEach(mod => {
+    const sub  = tasks.filter(t=>!t.group&&t.module===mod.id);
+    const grps = tasks.filter(t=>t.group&&t.module===mod.id);
+    const done = sub.filter(t=>t.progress===100).length;
+    const avg  = sub.length ? Math.round(sub.reduce((s,t)=>s+t.progress,0)/sub.length) : 0;
+    const overdue = sub.filter(t=>t.end&&t.end<TODAY&&t.progress<100).length;
+    const expanded = !!modExpanded[mod.id];
+    const mid = mod.id.replace(/'/g, "\'");
+
+    html += `<div class="mod-panel">
+      <div class="module-card" onclick="toggleModPanel('${mid}')">
+        <div class="module-color" style="background:${mod.color};width:18px;height:18px;border-radius:4px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div class="module-name">${mod.name}</div>
+          <div class="module-stats">${sub.length} 个任务 · ${done} 已完成 · 平均进度 ${avg}%${overdue?' · <span style="color:#c62828">'+overdue+' 已逾期</span>':''}</div>
+          <div style="height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-top:6px;max-width:280px">
+            <div style="height:100%;width:${avg}%;background:${mod.color};border-radius:3px"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-blue" onclick="event.stopPropagation();showEditModule('${mid}')" style="padding:4px 10px">编辑</button>
+          <button class="btn btn-red"  onclick="event.stopPropagation();deleteModule('${mid}')"  style="padding:4px 10px">删除</button>
+        </div>
+        <span class="mod-expand-btn${expanded?' open':''}">▶</span>
+      </div>
+      <div class="mod-tasks${expanded?' open':''}">
+        <div class="mod-tasks-toolbar">
+          <span>${done}/${sub.length} 已完成</span>
+          <button class="gtb-btn" onclick="event.stopPropagation();checkAllMod('${mid}',true)"  style="padding:2px 8px">全选完成</button>
+          <button class="gtb-btn" onclick="event.stopPropagation();checkAllMod('${mid}',false)" style="padding:2px 8px">全部重置</button>
+          <button class="btn btn-blue" onclick="event.stopPropagation();showAddTask('${mid}')" style="padding:3px 10px;margin-left:auto">＋ 新增任务</button>
+        </div>
+        <div class="task-check-list">
+          <div class="tc-row tc-header">
+            <div style="width:15px;flex-shrink:0"></div>
+            <span class="tc-name" style="font-weight:700;color:#546e7a">任务名称</span>
+            <span class="tc-col-w" style="font-weight:700;color:#546e7a;font-size:11px">自然日</span>
+            <span class="tc-col-w" style="font-weight:700;color:#546e7a;font-size:11px">工作日</span>
+            <span class="tc-date" style="font-weight:700;color:#546e7a;font-size:11px">截止日期</span>
+          </div>`;
+
+    grps.forEach(g => {
+      const children = tasks.filter(t=>!t.group&&t.module===mod.id&&t.phase===g.phase);
+      if (!children.length) return;
+      const gDone = children.filter(t=>t.progress===100).length;
+      const phaseEsc = g.phase.replace(/'/g,"\\'");
+      html += `<div class="tc-row tc-group">
+        <div style="width:15px;flex-shrink:0"></div>
+        <span class="tc-name" style="color:${mod.color}">${g.phase}</span>
+        <span></span><span></span>
+        <span class="tc-pct-badge">${gDone}/${children.length}</span>
+        <button class="gtb-btn" onclick="event.stopPropagation();showBatchDate('${mid}','${phaseEsc}')" style="padding:1px 7px;font-size:11px;background:#00695c">📅批量日期</button>
+        <button class="gtb-btn" onclick="event.stopPropagation();showAddTask('${mid}','${phaseEsc}')" style="padding:1px 7px;font-size:11px">＋任务</button>
+      </div>`;
+      children.forEach(t => {
+        const isDone = t.progress===100;
+        const isOD   = t.end && t.end < TODAY && !isDone;
+        const nameParts = t.name.split('_');
+        const dispName  = nameParts.length >= 3 ? nameParts.slice(2).join('_') : t.name;
+        const wd   = t.workdays  || 0;
+        const nat  = t.natural   || 0;
+        const endStr = t.end ? t.end : '';
+        const predBadge = (t.predecessors && t.predecessors.length) ? '<span style="font-size:10px;color:#90a4ae">&#8592;[' + t.predecessors.join(',') + ']</span>' : '';
+        html += `<div class="tc-row${isOD?' tc-overdue':''}">
+          <input type="checkbox" class="tc-check" ${isDone?'checked':''} onchange="checkTask(${t.id},this.checked)" onclick="event.stopPropagation()">
+          <span class="tc-name${isDone?' done':''}" title="${t.name}">${dispName}${predBadge}</span>
+          <input type="number" class="tc-days-input" min="1" value="${nat||''}" placeholder="自然"
+            onchange="updateTaskNatural(${t.id},this.value)" onclick="event.stopPropagation()">
+          <input type="number" class="tc-days-input" min="1" value="${wd||''}" placeholder="工作"
+            onchange="updateTaskWorkdays(${t.id},this.value)" onclick="event.stopPropagation()">
+          <span class="tc-date${isOD?' tc-date-od':''}">${endStr||'—'}</span>
+          <button class="gtb-btn" onclick="event.stopPropagation();showEditTask(${t.id})" style="padding:1px 7px;font-size:11px;flex-shrink:0">编辑</button>
+        </div>`;
+      });
+    });
+
+    html += `</div></div></div>`;
+  });
+  document.getElementById('moduleList').innerHTML = html;
+}
+function checkAllMod(id, checked) {
+  tasks.filter(t=>!t.group&&t.module===id).forEach(t=>{ t.progress=checked?100:0; });
+  saveData();
+  renderModules();
+  renderStatsTopbar();
+}
+
+let editingModuleId = null;
+function updateTaskNatural(id, val) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  const n = parseInt(val);
+  if (!n || n < 1) return;
+  t.natural = n;
+  if (t.start) {
+    t.end = addNaturalDays(t.start, n);
+    t.workdays = calcWorkdays(t.start, t.end);
+  }
+  saveData();
+  renderModules();
+  render();
+}
+function updateTaskWorkdays(id, val) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  const w = parseInt(val);
+  if (!w || w < 1) return;
+  t.workdays = w;
+  if (t.start) {
+    t.end = addWorkdays(t.start, w);
+    t.natural = calcNaturalDays(t.start, t.end);
+  }
+  saveData();
+  renderModules();
+  render();
+}
+
+function showAddModule() {
+  editingModuleId = null;
+  document.getElementById('mModalTitle').textContent = '新增模块';
+  document.getElementById('m_name').value = '';
+  document.getElementById('m_color').value = '#1a73e8';
+  // 显示阶段日期输入区，填入默认日期（参考第一个模块的阶段起始日）
+  document.getElementById('m_phase_dates').style.display = '';
+  const grid = document.getElementById('m_phase_grid');
+  const refMod = modules[0] ? modules[0].id : null;
+  grid.innerHTML = PHASES.map(ph => {
+    // 取同阶段已有模块的第一个启动日作为参考，否则用今天
+    let defDate = TODAY;
+    if (refMod) {
+      const refTask = tasks.find(t=>t.group&&t.module===refMod&&t.phase===ph);
+      if (refTask && refTask.start) defDate = refTask.start;
+    }
+    return `<div class="form-row"><label>${ph} 启动日</label><input type="date" id="m_ps_${ph.replace(/[^a-z0-9]/gi,'_')}" value="${defDate}"></div>`;
+  }).join('');
+  document.getElementById('moduleModal').classList.add('show');
+}
+function showEditModule(id) {
+  const mod = modules.find(m=>m.id===id);
+  if (!mod) return;
+  editingModuleId = id;
+  document.getElementById('mModalTitle').textContent = '编辑模块';
+  document.getElementById('m_phase_dates').style.display = 'none';
+  document.getElementById('m_name').value = mod.name;
+  document.getElementById('m_color').value = mod.color;
+  document.getElementById('moduleModal').classList.add('show');
+}
+function saveModule() {
+  const name = document.getElementById('m_name').value.trim();
+  const color = document.getElementById('m_color').value;
+  if (!name) { alert('请填写模块名称'); return; }
+  if (editingModuleId) {
+    // 编辑模式：只更新名称和颜色
+    const mod = modules.find(m=>m.id===editingModuleId);
+    mod.name = name; mod.color = color;
+  } else {
+    // 新增模式：创建模块并自动生成各阶段任务
+    if (modules.find(m=>m.id===name)) { alert('模块名已存在'); return; }
+    modules.push({id:name, name, color});
+    // 读取各阶段启动日期，生成任务
+    PHASES.forEach(ph => {
+      const inputId = 'm_ps_' + ph.replace(/[^a-z0-9]/gi,'_');
+      const el = document.getElementById(inputId);
+      const defs = PHASE_TASK_DEFS[ph];
+      if (!el || !defs) return;
+      let start = el.value || TODAY;
+      // 阶段组行
+      tasks.push(mkTask(ph, name + ' - ' + ph, name, start, 0, true));
+      // 子任务（按模板顺序依次排列）
+      defs.forEach(d => {
+        const taskName = getTaskName(name, ph, d.sub);
+        const t = mkTask(ph, taskName, name, start, d.days);
+        tasks.push(t);
+        if (t.end) start = fmt(new Date(new Date(t.end).getTime() + 86400000));
+      });
+    });
+  }
+  saveData();
+  closeModal('moduleModal');
+  renderModules();
+  renderFilters();
+  render();
+}
+function deleteModule(id) {
+  const mod = modules.find(m=>m.id===id);
+  if (!mod) return;
+  const cnt = tasks.filter(t=>t.module===id).length;
+  if (!confirm(`确认删除模块"${mod.name}"？\n该模块下 ${cnt} 个任务也会一并删除。`)) return;
+  modules = modules.filter(m=>m.id!==id);
+  tasks = tasks.filter(t=>t.module!==id);
+  saveData();
+  closeModal('moduleModal');
+  renderModules();
+  renderFilters();
+  render();
+}
+
+// ── 批量设置阶段日期 ──
+let _bdModule = '', _bdPhase = '';
+function showBatchDate(moduleId, phase) {
+  _bdModule = moduleId;
+  _bdPhase  = phase;
+  document.getElementById('bd_module').textContent = moduleId;
+  document.getElementById('bd_phase').textContent  = phase;
+  const first = tasks.find(t => !t.group && t.module === moduleId && t.phase === phase);
+  document.getElementById('bd_start').value = (first && first.start) ? first.start : TODAY;
+  document.getElementById('batchDateModal').classList.add('show');
+}
+function applyBatchDate() {
+  const startDate = document.getElementById('bd_start').value;
+  if (!startDate) { alert('请选择起始日期'); return; }
+  const phaseTasks = tasks.filter(t => !t.group && t.module === _bdModule && t.phase === _bdPhase);
+  if (!phaseTasks.length) { closeModal('batchDateModal'); return; }
+  let cur = startDate;
+  phaseTasks.forEach(t => {
+    t.start = cur;
+    if (t.workdays && t.workdays > 0) {
+      t.end     = addWorkdays(cur, t.workdays);
+      t.natural = calcNaturalDays(cur, t.end);
+    } else if (t.natural && t.natural > 0) {
+      t.end     = addNaturalDays(cur, t.natural);
+      t.workdays = calcWorkdays(cur, t.end);
+    } else {
+      t.workdays = 1;
+      t.end      = addWorkdays(cur, 1);
+      t.natural  = calcNaturalDays(cur, t.end);
+    }
+    const next = new Date(t.end);
+    next.setDate(next.getDate() + 1);
+    cur = fmt(next);
+  });
+  recalcGroups();
+  saveData();
+  renderModules();
+  render();
+  closeModal('batchDateModal');
+  alert('已推算 ' + phaseTasks.length + ' 个任务的日期');
+}
+
+// ═══════════════════════════════════════════════════
+// 进展分析
+// ═══════════════════════════════════════════════════
+function renderStatsPage() {
+  // 模块进度
+  let h1 = '<h3>各模块完成度</h3>';
+  modules.forEach(mod => {
+    const sub = tasks.filter(t=>!t.group&&t.module===mod.id);
+    const avg = sub.length ? Math.round(sub.reduce((s,t)=>s+t.progress,0)/sub.length) : 0;
+    const done = sub.filter(t=>t.progress===100).length;
+    h1 += `<div class="bar-row">
+      <div class="br-label"><span>${mod.name}</span><span style="color:${mod.color}">${done}/${sub.length} · ${avg}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${avg}%;background:${mod.color}"></div></div>
+    </div>`;
+  });
+  document.getElementById('statModules').innerHTML = h1;
+
+  // 阶段分布
+  let h2 = '<h3>阶段任务分布</h3>';
+  PHASES.forEach(ph => {
+    const sub = tasks.filter(t=>!t.group&&t.phase===ph);
+    const done=sub.filter(t=>t.progress===100).length, inp=sub.filter(t=>t.progress>0&&t.progress<100).length;
+    const avg = sub.length ? Math.round(sub.reduce((s,t)=>s+t.progress,0)/sub.length) : 0;
+    h2 += `<div class="bar-row">
+      <div class="br-label"><span>${ph}</span>
+        <span>✓${done} ⚡${inp} ○${sub.length-done-inp}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${avg}%;background:#${ph==='量产中测'?'e53935':'1e88e5'}"></div></div>
+    </div>`;
+  });
+  document.getElementById('statPhases').innerHTML = h2;
+
+  // 人员工作量
+  const persons = [...new Set(tasks.filter(t=>t.person&&!t.group).map(t=>t.person))];
+  let h3 = '<h3>人员工作量（工作日）</h3>';
+  if (!persons.length) {
+    h3 += '<p style="color:#aaa;font-size:12px">暂未填写跟进人</p>';
+  } else {
+    const maxWD = Math.max(...persons.map(p=>tasks.filter(t=>!t.group&&t.person===p).reduce((s,t)=>s+t.workdays,0)));
+    persons.forEach(p => {
+      const wd = tasks.filter(t=>!t.group&&t.person===p).reduce((s,t)=>s+t.workdays,0);
+      h3 += `<div class="bar-row">
+        <div class="br-label"><span>${p}</span><span>${wd} 工作日</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${maxWD?Math.round(wd/maxWD*100):0}%;background:#8e24aa"></div></div>
+      </div>`;
+    });
+  }
+  document.getElementById('statPersons').innerHTML = h3;
+
+  // 时间线
+  const sub = tasks.filter(t=>!t.group&&t.start);
+  const allStarts = sub.map(t=>t.start).sort();
+  const allEnds = sub.filter(t=>t.end).map(t=>t.end).sort().reverse();
+  const overdue = sub.filter(t=>t.end&&t.end<TODAY&&t.progress<100).length;
+  const totalND = sub.reduce((s,t)=>s+t.natural,0);
+  const totalWD = sub.reduce((s,t)=>s+t.workdays,0);
+  document.getElementById('statTimeline').innerHTML = `<h3>整体时间线</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#e3f2fd;border-radius:6px"><span>项目起始</span><strong>${allStarts[0]||'—'}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#fce4ec;border-radius:6px"><span>计划完成</span><strong>${allEnds[0]||'—'}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#f3e5f5;border-radius:6px"><span>总工时（自然日）</span><strong>${totalND} 天</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#e8f5e9;border-radius:6px"><span>总工时（工作日）</span><strong>${totalWD} 天</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;background:${overdue?'#fdecea':'#f5f5f5'};border-radius:6px"><span>已逾期任务</span><strong style="color:${overdue?'#c62828':'inherit'}">${overdue} 项</strong></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// 导出 Excel
+// ═══════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────
+// 导出 Excel（含公式关联）
+// 列布局（1-based）：
+//   A:序号  B:任务名称  C:模块  D:阶段  E:跟进人
+//   F:启动日期  G:完成日期  H:工时(自然日)  I:工时(工作日)
+//   J:完成度(%)  K:状态
+// 公式说明：
+//   G（完成日期）= F（启动日期）+ H（自然日）- 1
+//   I（工作日）  = NETWORKDAYS(F, G, 节假日区域) - 调休补班修正
+//   K（状态）    = IF 公式判断
+//   组行 H/I     = SUM 子任务
+//   组行 J       = AVERAGE 子任务完成度
+// ─────────────────────────────────────────────────────────────
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // ── 日期序列号工具（全局，buildSheet 也用）
+  // yyyy-mm-dd → Excel 整数序列号，基于 UTC 午夜，无时区偏移
+  function dateSerial(s) {
+    if (!s) return 0;
+    const p = s.split('-');
+    if (p.length !== 3) return 0;
+    return Math.round((Date.UTC(+p[0],+p[1]-1,+p[2]) - Date.UTC(1899,11,30)) / 86400000);
+  }
+
+  // ── 1. 先写节假日表
+  // NETWORKDAYS 第三参数只能包含数字（日期序列号），空单元格或字符串会导致 #VALUE!
+  // 因此：B列只放 type='n' 的放假日期，C列只放调休上班日，不写空格
+  const holSheet = '节假日一览表';
+  const offDates  = holidays.filter(h=>h.type==='holiday').map(h=>h.date).sort();
+  const workDates = holidays.filter(h=>h.type==='workday').map(h=>h.date).sort();
+  const holMaxLen = Math.max(offDates.length, workDates.length, 1);
+
+  const hws = {};
+  // 表头
+  hws['A1'] = {v:'节日',        t:'s'};
+  hws['B1'] = {v:'日期（放假）', t:'s'};
+  hws['C1'] = {v:'调休上班日',  t:'s'};
+  for (let i=0; i<holMaxLen; i++) {
+    const row = i + 2;
+    // A列：第一个放假日对应的节日名
+    const name = offDates[i]
+      ? (holidays.find(h=>h.type==='holiday'&&h.date===offDates[i])||{}).name||''
+      : '';
+    hws['A'+row] = {v: name, t:'s'};
+    // B列：放假日（纯数字，NETWORKDAYS可正常引用）
+    if (offDates[i]) {
+      hws['B'+row] = {v: dateSerial(offDates[i]), t:'n', z:'yyyy-mm-dd'};
+    }
+    // C列：调休上班日（纯数字）
+    if (workDates[i]) {
+      hws['C'+row] = {v: dateSerial(workDates[i]), t:'n', z:'yyyy-mm-dd'};
+    }
+    // 注意：没有数据的格子完全不写，避免空字符串进入 NETWORKDAYS 范围
+  }
+  hws['!ref'] = 'A1:C' + (holMaxLen + 1);
+  hws['!cols'] = [{wch:12},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, hws, holSheet);
+
+  // NETWORKDAYS 引用 B 列放假日期范围
+  const holOffRange = offDates.length > 0
+    ? `'${holSheet}'!$B$2:$B$${offDates.length + 1}`
+    : null; // 无节假日时省略第三参数
+
+  // ── 辅助：把数据行写入 worksheet
+  // 策略��公式 + 缓存值同时写入（v 字段）
+  //   Excel 打开直接显示缓存值；Ctrl+S 后公式自动重算
+  //   F 列（启动日期）：静态日期值，用户可直接修改
+  //   G 列（完成日期）：=F+H-1  缓存值=t.end
+  //   H 列（自然日）  ：静态数值，用户可直接修改
+  //   I 列（工作日）  ：=NETWORKDAYS(F,G[,节假日])  缓存值=t.workdays
+  //   J 列（完成度）  ：静态数值
+  //   K 列（状态）    ：=IF(J=100,...)  缓存值=statusText
+  // shortName=true：子任务名去掉"模块_阶段_"前缀，只显示子任务名（用于模块分表）
+  // shortName=false：保持完整任务名（用于项目管理总表，导入时匹配用）
+  function buildSheet(taskList, shortName) {
+    const ws = {};
+    const range = {s:{r:0,c:0}, e:{r:0,c:10}};
+
+    // 写静态值
+    function sc(r, c, v, t, z) {
+      const a = XLSX.utils.encode_cell({r,c});
+      ws[a] = {v, t: t||'s'};
+      if (z) ws[a].z = z;
+    }
+    // 写公式，同时附带缓存值 cv（避免 Excel 打开时报错）
+    function sf(r, c, f, cv, t, z) {
+      const a = XLSX.utils.encode_cell({r,c});
+      ws[a] = {f, v: cv, t: t||'n'};
+      if (z) ws[a].z = z;
+    }
+    // 写日期公式，缓存值为整数序列号；日期为空时不写此格
+    function sfDate(r, c, f, dateStr) {
+      const serial = dateSerial(dateStr);
+      const a = XLSX.utils.encode_cell({r,c});
+      if (serial) {
+        ws[a] = {f, v: serial, t: 'n', z: 'yyyy-mm-dd'};
+      } else {
+        // 无日期：只写公式，缓存值给空字符串
+        ws[a] = {f, v: '', t: 's'};
+      }
+    }
+    // 写静态日期
+    function sd(r, c, dateStr) {
+      if (!dateStr) return;
+      const serial = dateSerial(dateStr);
+      if (!serial) return;
+      const a = XLSX.utils.encode_cell({r,c});
+      ws[a] = {v: serial, t: 'n', z: 'yyyy-mm-dd'};
+    }
+    // 状态文字（用作公式缓存值）
+    function statusText(t) {
+      if (t.progress >= 100) return '已完成';
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (t.end) { const ed = new Date(t.end); ed.setHours(0,0,0,0); if (ed < today) return '已逾期'; }
+      if (t.progress >= 75) return '收尾中';
+      if (t.progress >= 50) return '进行中';
+      if (t.progress > 0)   return '已启动';
+      return '待启动';
+    }
+
+    // 表头
+    ['序号','任务名称','所属模块','所属阶段','跟进人',
+     '启动日期','完成日期','工时(自然日)','工时(工作日)','完成度(%)','状态'
+    ].forEach((h,ci) => sc(0, ci, h));
+
+    // 预扫描：建立 excelRow 映射（表头占第1行，数据从第2行起）
+    const rowMap = taskList.map((task, idx) => ({task, er: idx + 2}));
+
+    let seq = 0;
+    rowMap.forEach(({task:t, er}) => {
+      const r = er - 1; // 0-based row index
+      if (r > range.e.r) range.e.r = r;
+
+      if (t.group) {
+        // 找本组子任务的 excelRow 范围
+        const kids = rowMap.filter(x => !x.task.group && x.task.module===t.module && x.task.phase===t.phase);
+        sc(r, 0, '');
+        sc(r, 1, t.name);
+        sc(r, 2, t.module);
+        sc(r, 3, t.phase);
+        sc(r, 4, '');
+        if (kids.length) {
+          const fr = kids[0].er, lr = kids[kids.length-1].er;
+          // 预计算缓存值
+          const starts  = kids.map(k=>k.task.start).filter(Boolean).sort();
+          const ends    = kids.map(k=>k.task.end).filter(Boolean).sort();
+          const minS    = starts[0]||'';
+          const maxE    = ends[ends.length-1]||'';
+          const sumWd   = kids.reduce((s,k)=>s+(k.task.workdays||0), 0);
+          const avgPct  = Math.round(kids.reduce((s,k)=>s+(k.task.progress||0),0)/kids.length);
+          const nat     = minS && maxE ? calcNaturalDays(minS, maxE) : 0;
+          // F: MIN 子任务启动日期
+          sfDate(r, 5, `MIN(F${fr}:F${lr})`, minS);
+          // G: MAX 子任务完成日期
+          sfDate(r, 6, `MAX(G${fr}:G${lr})`, maxE);
+          // H: 组自然日 = G - F + 1
+          sf(r, 7, `IF(AND(F${er}<>"",G${er}<>""),G${er}-F${er}+1,"")`, nat||'', nat?'n':'s');
+          // I: 组工作日 = SUM 子任务工作日
+          sf(r, 8, `SUM(I${fr}:I${lr})`, sumWd, 'n');
+          // J: 组完成度 = ROUND(AVERAGE,0)
+          sf(r, 9, `ROUND(AVERAGE(J${fr}:J${lr}),0)`, avgPct, 'n');
+          // K: 组状态
+          const grpSt = avgPct>=100?'已完成':avgPct>0?'进行中':'待启动';
+          sf(r, 10, `IF(J${er}=100,"已完成",IF(J${er}>0,"进行中","待启动"))`, grpSt, 's');
+        } else {
+          [5,6,7,8,9,10].forEach(ci => sc(r, ci, ''));
+        }
+
+      } else {
+        seq++;
+        sc(r, 0, seq, 'n');
+        // 短名：去掉"模块_阶段_"前缀（如"核心板_手板1_原理图设计" → "原理图设计"）
+        const dispName = shortName
+          ? (t.name.startsWith(t.module+'_'+t.phase+'_') ? t.name.slice((t.module+'_'+t.phase+'_').length) : t.name)
+          : t.name;
+        sc(r, 1, dispName);
+        sc(r, 2, t.module);
+        sc(r, 3, t.phase);
+        sc(r, 4, t.person||'');
+        // F: 启动日期（静态，用户可直接改）
+        sd(r, 5, t.start);
+        // G: =F+H-1  缓存值=t.end
+        sfDate(r, 6, `IF(OR(F${er}="",H${er}=0),"",F${er}+H${er}-1)`, t.end||'');
+        // H: 自然日（静态，用户可直接改）
+        sc(r, 7, t.natural||0, 'n');
+        // I: =NETWORKDAYS(F,G[,节假日])  缓存值=t.workdays
+        const ndFormula = holOffRange
+          ? `IF(OR(F${er}="",G${er}=""),"",NETWORKDAYS(F${er},G${er},${holOffRange}))`
+          : `IF(OR(F${er}="",G${er}=""),"",NETWORKDAYS(F${er},G${er}))`;
+        sf(r, 8, ndFormula, t.workdays||0, 'n');
+        // J: 完成度（静态）
+        sc(r, 9, t.progress||0, 'n');
+        // K: 状态公式  缓存值=statusText
+        sf(r, 10,
+          `IF(J${er}=100,"已完成",IF(AND(G${er}<>"",G${er}<TODAY(),J${er}<100),"已逾期",IF(J${er}>=75,"收尾中",IF(J${er}>=50,"进行中",IF(J${er}>0,"已启动","待启动")))))`,
+          statusText(t), 's'
+        );
+      }
+    });
+
+    range.e.c = 10;
+    ws['!ref'] = XLSX.utils.encode_range(range);
+    ws['!cols'] = [5,38,12,10,10,12,12,10,10,10,10].map(w=>({wch:w}));
+    return ws;
+  }
+
+
+  // ── 2. 项目管理总表（任务名保持完整：模块_阶段_子任务）
+  const ws_all = buildSheet(tasks, false);
+  XLSX.utils.book_append_sheet(wb, ws_all, '项目管理');
+
+  // ── 3. 各模块分表（任务名使用短名：去掉"模块_阶段_"前缀，只显示子任务名）
+  modules.forEach(mod => {
+    const modTasks = tasks.filter(t => t.module === mod.id);
+    const ws_mod = buildSheet(modTasks, true); // shortName=true
+    XLSX.utils.book_append_sheet(wb, ws_mod, mod.name.slice(0,30));
+  });
+
+  XLSX.writeFile(wb, `硬件项目计划_${TODAY.replace(/-/g,'')}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════
+// Excel 导入
+// ═══════════════════════════════════════════════════
+function importExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // 允许重复选同一文件
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+
+      // ── 辅助：日期格式统一为 yyyy-mm-dd
+      function toDateStr(v) {
+        if (!v) return '';
+        if (typeof v === 'string') {
+          const m = v.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+          if (m) return m[1] + '-' + m[2].padStart(2,'0') + '-' + m[3].padStart(2,'0');
+          return '';
+        }
+        if (v instanceof Date) return fmt(v);
+        // Excel 整数序列号（基于 1899-12-30 UTC）
+        if (typeof v === 'number') {
+          const d = new Date((v - 25569) * 86400000);
+          return d.getUTCFullYear() + '-' +
+            String(d.getUTCMonth()+1).padStart(2,'0') + '-' +
+            String(d.getUTCDate()).padStart(2,'0');
+        }
+        return '';
+      }
+
+      // ── 辅助：从一个 worksheet 的行数据导入任务
+      // moduleHint: 如果是模块分表，传入模块ID（任务名是短名，需要拼接前缀匹配）
+      // 返回 {updated, added, skipped}
+      function importSheet(ws, moduleHint) {
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+        if (rows.length < 2) return {updated:0, added:0, skipped:0};
+
+        const hdr = rows[0].map(h => String(h).trim());
+        const CI = {
+          seq:    hdr.findIndex(h => h.includes('序号')),
+          name:   hdr.findIndex(h => h.includes('任务名称') || h.includes('任务名')),
+          module: hdr.findIndex(h => h.includes('所属模块') || h.includes('模块')),
+          phase:  hdr.findIndex(h => h.includes('所属阶段') || h.includes('阶段')),
+          person: hdr.findIndex(h => h.includes('跟进人') || h.includes('负责人')),
+          start:  hdr.findIndex(h => h.includes('启动日期') || h.includes('开始日期')),
+          end:    hdr.findIndex(h => h.includes('完成日期') || h.includes('结束日期')),
+          natural:hdr.findIndex(h => h.includes('自然日')),
+          wd:     hdr.findIndex(h => h.includes('工作日')),
+          pct:    hdr.findIndex(h => h.includes('完成度') || h.includes('进度')),
+        };
+        if (CI.name < 0) return {updated:0, added:0, skipped:rows.length-1};
+
+        let updated=0, added=0, skipped=0;
+
+        for (let ri = 1; ri < rows.length; ri++) {
+          const row = rows[ri];
+          const seqVal  = CI.seq >= 0 ? String(row[CI.seq]||'').trim() : '';
+          let   nameVal = String(row[CI.name]||'').trim();
+          // 模块列：分表里有值就用，没有则用 moduleHint
+          let   modVal  = CI.module >= 0 ? String(row[CI.module]||'').trim() : '';
+          if (!modVal && moduleHint) modVal = moduleHint;
+          const phaseVal= CI.phase >= 0 ? String(row[CI.phase]||'').trim() : '';
+
+          if (!nameVal || !modVal) { skipped++; continue; }
+
+          // 空序号 = 组行，跳过
+          const isGroup = !seqVal || isNaN(parseInt(seqVal));
+          if (isGroup) { skipped++; continue; }
+
+          // 模块分表用短名，尝试两种匹配：
+          //   1. 直接用短名匹配（全名 = 模块_阶段_短名）
+          //   2. 退而用nameVal本身（兼容全名）
+          const fullName = (moduleHint && phaseVal && !nameVal.startsWith(modVal+'_'))
+            ? modVal + '_' + phaseVal + '_' + nameVal
+            : nameVal;
+
+          const startVal  = toDateStr(CI.start  >= 0 ? row[CI.start]  : '');
+          const endVal    = toDateStr(CI.end     >= 0 ? row[CI.end]    : '');
+          const naturalVal= CI.natural >= 0 ? parseInt(row[CI.natural])||0 : 0;
+          const wdVal     = CI.wd      >= 0 ? parseInt(row[CI.wd])||0     : 0;
+          const pctVal    = CI.pct     >= 0 ? Math.min(100,Math.max(0,parseInt(row[CI.pct])||0)) : 0;
+          const personVal = CI.person  >= 0 ? String(row[CI.person]||'').trim() : '';
+
+          // 确保模块存在
+          if (!modules.find(m => m.id === modVal)) {
+            const colors = ['#1e88e5','#8e24aa','#00897b','#e53935','#f4511e','#039be5','#7cb342'];
+            modules.push({id:modVal, name:modVal, color:colors[modules.length%colors.length]});
+          }
+
+          // 匹配：先用全名，再用nameVal原始值
+          let existing = tasks.find(t => !t.group && t.module===modVal && t.phase===phaseVal && t.name===fullName)
+                      || tasks.find(t => !t.group && t.module===modVal && t.phase===phaseVal && t.name===nameVal);
+
+          if (existing) {
+            if (personVal)   existing.person   = personVal;
+            if (startVal)    existing.start    = startVal;
+            if (endVal)      existing.end      = endVal;
+            if (naturalVal)  existing.natural  = naturalVal;
+            if (wdVal)       existing.workdays = wdVal;
+            existing.progress = pctVal;
+            updated++;
+          } else {
+            // 新增任务，插到同模块+阶段最后一个子任务之后
+            let insertIdx = -1;
+            for (let i = 0; i < tasks.length; i++) {
+              if (!tasks[i].group && tasks[i].module===modVal && tasks[i].phase===phaseVal) insertIdx = i;
+            }
+            const newTask = {
+              id:nextId(), group:false, phase:phaseVal,
+              name: fullName, module:modVal, person:personVal,
+              start:startVal, end:endVal, natural:naturalVal, workdays:wdVal,
+              progress:pctVal, predecessors:[]
+            };
+            if (insertIdx >= 0) {
+              tasks.splice(insertIdx+1, 0, newTask);
+            } else {
+              if (!tasks.some(t=>t.group&&t.module===modVal&&t.phase===phaseVal)) {
+                tasks.push({id:nextId(),group:true,name:modVal+' - '+phaseVal,
+                  module:modVal,phase:phaseVal,person:'',start:startVal,end:endVal,
+                  natural:0,workdays:0,progress:0,predecessors:[]});
+              }
+              tasks.push(newTask);
+            }
+            added++;
+          }
+        }
+        return {updated, added, skipped};
+      }
+
+      // ── 导入策略：
+      //   1. 逐个模块分表（Sheet名与模块ID精确匹配）导入对应模块的任务
+      //   2. 再处理"项目管理"总表（只补充模块分表未覆盖到的模块）
+      //   3. 最后处理节假日
+      let totalUpdated=0, totalAdded=0, totalSkipped=0;
+      const importedModules = new Set();
+
+      // 步骤1：模块分表优先
+      modules.forEach(mod => {
+        const sn = wb.SheetNames.find(n => n === mod.name || n === mod.id);
+        if (!sn) return;
+        const r = importSheet(wb.Sheets[sn], mod.id);
+        totalUpdated += r.updated; totalAdded += r.added; totalSkipped += r.skipped;
+        importedModules.add(mod.id);
+      });
+
+      // 步骤2：项目管理总表 —— 只处理尚未被模块分表覆盖的模块
+      const allSheet = wb.SheetNames.find(n => n === '项目管理');
+      if (allSheet) {
+        const ws = wb.Sheets[allSheet];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+        if (rows.length >= 2) {
+          const hdr = rows[0].map(h=>String(h).trim());
+          const modCI = hdr.findIndex(h=>h.includes('所属模块')||h.includes('模块'));
+          // 找出总表里有哪些模块没被分表覆盖
+          const uncovered = new Set();
+          for (let ri=1; ri<rows.length; ri++) {
+            const mv = modCI>=0 ? String(rows[ri][modCI]||'').trim() : '';
+            if (mv && !importedModules.has(mv)) uncovered.add(mv);
+          }
+          if (uncovered.size > 0) {
+            // 过滤只处理未覆盖模块的行
+            const filteredWs = {};
+            // 复制表头
+            hdr.forEach((h,ci)=>{ filteredWs[XLSX.utils.encode_cell({r:0,c:ci})]={v:h,t:'s'}; });
+            let newR = 1;
+            for (let ri=1; ri<rows.length; ri++) {
+              const mv = modCI>=0 ? String(rows[ri][modCI]||'').trim() : '';
+              if (!mv || uncovered.has(mv)) {
+                rows[ri].forEach((v,ci)=>{ filteredWs[XLSX.utils.encode_cell({r:newR,c:ci})]={v,t:typeof v==='number'?'n':'s'}; });
+                newR++;
+              }
+            }
+            filteredWs['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:newR-1,c:hdr.length-1}});
+            const r = importSheet(filteredWs, null);
+            totalUpdated += r.updated; totalAdded += r.added; totalSkipped += r.skipped;
+          }
+        }
+      }
+
+      // 步骤3：节假日
+      let holAdded = 0;
+      const holSheet = wb.SheetNames.find(n => n.includes('节假日'));
+      if (holSheet) {
+        const hrows = XLSX.utils.sheet_to_json(wb.Sheets[holSheet], {header:1, defval:'', raw:true});
+        for (let ri = 1; ri < hrows.length; ri++) {
+          const [hname, offDate, workDate] = hrows[ri];
+          const nameStr = String(hname||'').trim();
+          if (offDate) {
+            const d = toDateStr(offDate);
+            const y = d ? parseInt(d.slice(0,4)) : 0;
+            if (d && !holidays.find(h=>h.date===d&&h.type==='holiday')) {
+              holidays.push({name:nameStr||'假期', year:y, date:d, type:'holiday'});
+              holAdded++;
+            }
+          }
+          if (workDate) {
+            const d = toDateStr(workDate);
+            const y = d ? parseInt(d.slice(0,4)) : 0;
+            if (d && !holidays.find(h=>h.date===d&&h.type==='workday')) {
+              holidays.push({name:nameStr||'调休', year:y, date:d, type:'workday'});
+              holAdded++;
+            }
+          }
+        }
+      }
+
+      recalcGroups();
+      saveData();
+      render();
+      renderFilters();
+
+      const nl = String.fromCharCode(10);
+      alert(['导入完成！',
+        '更新任务：' + totalUpdated + ' 条',
+        '新增任务：' + totalAdded  + ' 条',
+        totalSkipped > 0 ? '跳过行：' + totalSkipped + ' 条（组行/空行）' : '',
+        holAdded > 0 ? '新增假期：' + holAdded + ' 条' : '',
+      ].filter(Boolean).join(nl));
+
+    } catch(err) {
+      console.error('importExcel error:', err);
+      alert('导入失败：' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+// ═══════════════════════════════════════════════════
+// 页签切换
+// ═══════════════════════════════════════════════════
+function switchPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name==='stats') renderStatsPage();
+  if (name==='holiday') renderHolidays();
+  if (name==='modules') renderModules();
+}
+
+// 关闭模态框
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.mask').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) closeModal(m.id); });
+});
+
+// ═══════════════════════════════════════════════════
+// 持久化存储
+// ═══════════════════════════════════════════════════
+const STORAGE_KEY = 'pm_rx101_data';
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      tasks, modules, holidays, _tid, _v: 'rx101_v2026_excel'
+    }));
+  } catch(e) { console.warn('saveData failed', e); }
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (d.modules && d.modules.length) modules = d.modules;
+    if (d.tasks   && d.tasks.length)   tasks   = d.tasks;
+    if (d.holidays && d.holidays.length) holidays = d.holidays;
+    if (d._tid) _tid = d._tid;
+    return true;
+  } catch(e) { console.warn('loadData failed', e); return false; }
+}
+
+function resetData() {
+  if (!confirm('确认重置所有数据为初始状态？（无法撤销）')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════════════
+loadData();
+render();
+</script>
+</body>
+</html>
