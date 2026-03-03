@@ -1,33 +1,33 @@
 # 硬件项目计划管理看板
 
-A single-file HTML project management dashboard for hardware development, featuring Gantt chart visualization, Excel import/export, and Chinese holiday management.
+面向硬件研发团队的单文件 HTML 项目管理工具，支持甘特图可视化、Excel 导入导出与中国节假日管理。
 
-## Features
+## 功能特性
 
-- **Gantt Chart** — Visual timeline with per-module color coding and today-line indicator
-- **Task Management** — Add, edit, delete tasks with start/end dates, natural days, and workdays
-- **Progress Tracking** — Per-task completion percentage with visual progress bars
-- **Excel Export** — Exports a multi-sheet workbook: one summary sheet + one sheet per module, with NETWORKDAYS formulas linked to a holiday sheet
-- **Excel Import** — Re-imports the exported workbook; module sheets take priority over the summary sheet
-- **Holiday Management** — Configure Chinese public holidays and makeup workdays; affects all workday calculations
-- **Batch Date Setting** — Set a start date for an entire phase and auto-cascade all task dates
-- **Persistent Storage** — All data saved to `localStorage`; survives page refresh
+- **甘特图** — 按模块色彩区分的时间轴，含今日基准线
+- **任务管理** — 新增、编辑、删除任务，支持启动/完成日期、自然日、工作日联动计算
+- **进度跟踪** — 每条任务可设置完成百分比，可视化进度条展示
+- **Excel 导出** — 导出多 Sheet 工作簿：一张汇总表 + 各模块独立分表，包含 NETWORKDAYS 公式与节假日联动
+- **Excel 导入** — 支持回导修改后的工作簿，模块分表优先于汇总表
+- **节假日管理** — 配置法定假日与调休工作日，影响全局工作日计算
+- **批量日期推算** — 为整个阶段设置起始日期，自动级联推算所有子任务日期
+- **数据持久化** — 所有数据存储于 `localStorage`，刷新页面不丢失
 
-## Usage
+## 使用方式
 
-Open `index.html` directly in a browser — no server or build step required.
+直接用浏览器打开 `index.html` 即可，无需服务器或构建工具。
 
-Or visit the live deployment:
+在线访问：
 **[https://27834853-ctrl.github.io/Project_Management_Webpage/](https://27834853-ctrl.github.io/Project_Management_Webpage/)**
 
-## Workflow
+## 基本操作
 
-1. Edit tasks via double-click or the **编辑** button
-2. Export to Excel for sharing (`导出Excel`)
-3. Update dates/progress in Excel, then re-import (`导入Excel`)
-4. Use **批量日期** on a phase row to auto-fill all task dates from a single start date
+1. 双击任务行或点击 **编辑** 按钮修改任务信息
+2. 点击 **导出 Excel** 将当前计划导出为工作簿
+3. 在 Excel 中更新日期/进度后，点击 **导入 Excel** 回导数据
+4. 点击阶段行上的 **📅 批量日期**，从一个起始日期自动推算整阶段的任务日期
 
-## Tech Stack
+## 技术栈
 
-- Vanilla HTML / CSS / JavaScript — zero dependencies
-- [SheetJS (xlsx)](https://sheetjs.com/) — Excel read/write (loaded via CDN)
+- 纯 HTML / CSS / JavaScript，无任何框架依赖
+- [SheetJS (xlsx)](https://sheetjs.com/) — Excel 读写（CDN 引入）
