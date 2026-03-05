@@ -2465,6 +2465,150 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws_mod, mod.name.slice(0,30));
   });
 
+  // ── 4. 甘特图 Sheet
+  (function() {
+    const ws = {};
+    // 确定日期范围：取所有任务的最早开始和最晚结束
+    const allStarts = tasks.filter(t=>!t.group&&t.start).map(t=>t.start).sort();
+    const allEnds   = tasks.filter(t=>!t.group&&t.end).map(t=>t.end).sort();
+    if (!allStarts.length) return;
+
+    const ganttStart = allStarts[0];
+    const ganttEnd   = allEnds[allEnds.length-1];
+
+    // 生成日期列表（按周分组，只显示每周第一天的列头，减少列数）
+    // 甘特图粒度：每列代表1周
+    function parseDate(s) { const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+    function toYMD(d) {
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    // 把 ganttStart 对齐到当周周一
+    const gStart = parseDate(ganttStart);
+    const dow = gStart.getDay(); // 0=Sun
+    const alignedStart = new Date(gStart);
+    alignedStart.setDate(gStart.getDate() - (dow === 0 ? 6 : dow - 1));
+
+    const gEnd = parseDate(ganttEnd);
+    // 收集所有周
+    const weeks = [];
+    const cur = new Date(alignedStart);
+    while (cur <= gEnd) {
+      weeks.push(toYMD(new Date(cur)));
+      cur.setDate(cur.getDate() + 7);
+    }
+    if (!weeks.length) return;
+
+    // 固定列：A=序号(3), B=阶段(8), C=模块(10), D=任务名(28), E=开始(10), F=结束(10), G=进度(6)
+    // 然后每周一列（宽4），显示月份/周数
+    const FIXED_COLS = 7;
+    const totalCols  = FIXED_COLS + weeks.length;
+
+    // 阶段颜色映射（用 Excel 可识别的字符）
+    const PHASE_CHARS = {
+      '手板1':   '░',
+      '手板2':   '▒',
+      'P0':      '▓',
+      'P1':      '■',
+      'P2':      '▪',
+      '中试量产': '█',
+    };
+
+    function sc(r, c, v, t) {
+      ws[XLSX.utils.encode_cell({r,c})] = {v: v===undefined?'':v, t: t||'s'};
+    }
+    function sn(r, c, v) { sc(r, c, v, 'n'); }
+
+    let row = 0;
+
+    // ── 第1行：月份合并标题（用重复月名占位，Excel看到后可手动合并）
+    sc(row, 0, '序号');
+    sc(row, 1, '阶段');
+    sc(row, 2, '所属模块');
+    sc(row, 3, '任务名称');
+    sc(row, 4, '启动日期');
+    sc(row, 5, '完成日期');
+    sc(row, 6, '进度%');
+    let lastMonth = '';
+    weeks.forEach((wk, wi) => {
+      const d = parseDate(wk);
+      const mo = d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0');
+      sc(row, FIXED_COLS + wi, mo !== lastMonth ? mo : '');
+      lastMonth = mo;
+    });
+    row++;
+
+    // ── 第2行：周序号（W01, W02...）
+    sc(row, 0, ''); sc(row, 1, ''); sc(row, 2, ''); sc(row, 3, '');
+    sc(row, 4, ''); sc(row, 5, ''); sc(row, 6, '');
+    weeks.forEach((wk, wi) => {
+      const d = parseDate(wk);
+      sc(row, FIXED_COLS + wi, d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0'));
+    });
+    row++;
+
+    // ── 数据行
+    let seq = 0;
+    tasks.forEach(t => {
+      if (!t.start || !t.end) { row++; return; }
+      const isGrp = t.group;
+      if (isGrp) {
+        sc(row, 0, '');
+      } else {
+        seq++;
+        sn(row, 0, seq);
+      }
+      sc(row, 1, t.phase||'');
+      sc(row, 2, t.module||'');
+      // 任务名：组行保持完整，子任务去掉前缀
+      let dispName = t.name;
+      if (!isGrp && t.name.startsWith(t.module+'_'+t.phase+'_')) {
+        dispName = t.name.slice((t.module+'_'+t.phase+'_').length);
+      }
+      sc(row, 3, dispName);
+      sc(row, 4, t.start);
+      sc(row, 5, t.end);
+      sn(row, 6, t.progress||0);
+
+      // 甘特条：判断每周是否在任务区间内
+      const tStart = parseDate(t.start);
+      const tEnd   = parseDate(t.end);
+      const phChar  = PHASE_CHARS[t.phase] || '■';
+      // 组行用不同字符
+      const fillChar = isGrp ? '◆' : phChar;
+
+      weeks.forEach((wk, wi) => {
+        const wkStart = parseDate(wk);
+        const wkEnd   = new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
+        // 判断任务与本周是否重叠
+        if (tStart <= wkEnd && tEnd >= wkStart) {
+          // 计算覆盖比例
+          const overlapStart = tStart > wkStart ? tStart : wkStart;
+          const overlapEnd   = tEnd < wkEnd ? tEnd : wkEnd;
+          const overlapDays  = Math.round((overlapEnd - overlapStart)/86400000) + 1;
+          // 进度已完成部分用不同字符
+          const doneRatio = (t.progress||0) / 100;
+          const totalDays = Math.round((tEnd - tStart)/86400000) + 1;
+          const doneDays  = Math.round(totalDays * doneRatio);
+          const doneByNow = Math.round((overlapStart - tStart)/86400000);
+          const bar = doneByNow < doneDays ? '●' : fillChar;
+          sc(row, FIXED_COLS + wi, bar);
+        }
+      });
+      row++;
+    });
+
+    // 设置列宽
+    const colWidths = [4, 8, 10, 28, 11, 11, 6];
+    weeks.forEach(() => colWidths.push(5));
+    ws['!cols'] = colWidths.map(w => ({wch: w}));
+    ws['!ref']  = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:row-1, c:totalCols-1}});
+
+    // 冻结前7列
+    ws['!freeze'] = {xSplit: FIXED_COLS, ySplit: 2, topLeftCell: XLSX.utils.encode_cell({r:2, c:FIXED_COLS})};
+
+    XLSX.utils.book_append_sheet(wb, ws, '甘特图');
+  })();
+
   XLSX.writeFile(wb, `硬件项目计划_${TODAY.replace(/-/g,'')}.xlsx`);
 }
 
