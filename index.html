@@ -485,6 +485,7 @@ body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:var(--bg);co
 </div>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════
 // 假期数据（2026–2035，中国大陆法定节假日）
@@ -2465,151 +2466,238 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws_mod, mod.name.slice(0,30));
   });
 
-  // ── 4. 甘特图 Sheet
-  (function() {
-    const ws = {};
-    // 确定日期范围：取所有任务的最早开始和最晚结束
-    const allStarts = tasks.filter(t=>!t.group&&t.start).map(t=>t.start).sort();
-    const allEnds   = tasks.filter(t=>!t.group&&t.end).map(t=>t.end).sort();
-    if (!allStarts.length) return;
+  XLSX.writeFile(wb, `硬件项目计划_${TODAY.replace(/-/g,'')}.xlsx`);
 
-    const ganttStart = allStarts[0];
-    const ganttEnd   = allEnds[allEnds.length-1];
+  // ── ExcelJS 彩色甘特图（每模块一个 Sheet）──────────────────────
+  (async function() {
+    try {
+      const ewb = new ExcelJS.Workbook();
+      ewb.creator = 'HW PM Tool';
 
-    // 生成日期列表（按周分组，只显示每周第一天的列头，减少列数）
-    // 甘特图粒度：每列代表1周
-    function parseDate(s) { const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
-    function toYMD(d) {
-      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    }
-    // 把 ganttStart 对齐到当周周一
-    const gStart = parseDate(ganttStart);
-    const dow = gStart.getDay(); // 0=Sun
-    const alignedStart = new Date(gStart);
-    alignedStart.setDate(gStart.getDate() - (dow === 0 ? 6 : dow - 1));
+      // 阶段颜色（ARGB，不含#）
+      const PHASE_BG = {
+        '手板1':   'FF1E88E5',
+        '手板2':   'FF8E24AA',
+        'P0':      'FF00897B',
+        'P1':      'FFF4511E',
+        'P2':      'FFE53935',
+        '中试量产': 'FF43A047',
+      };
+      const DEFAULT_BG = 'FF546E7A';
+      // 完成部分颜色（略深）
+      const DONE_BG = {
+        '手板1':   'FF0D47A1',
+        '手板2':   'FF4A148C',
+        'P0':      'FF004D40',
+        'P1':      'FFBf360C',
+        'P2':      'FFB71C1C',
+        '中试量产': 'FF1B5E20',
+      };
+      const DEFAULT_DONE_BG = 'FF263238';
 
-    const gEnd = parseDate(ganttEnd);
-    // 收集所有周
-    const weeks = [];
-    const cur = new Date(alignedStart);
-    while (cur <= gEnd) {
-      weeks.push(toYMD(new Date(cur)));
-      cur.setDate(cur.getDate() + 7);
-    }
-    if (!weeks.length) return;
-
-    // 固定列：A=序号(3), B=阶段(8), C=模块(10), D=任务名(28), E=开始(10), F=结束(10), G=进度(6)
-    // 然后每周一列（宽4），显示月份/周数
-    const FIXED_COLS = 7;
-    const totalCols  = FIXED_COLS + weeks.length;
-
-    // 阶段颜色映射（用 Excel 可识别的字符）
-    const PHASE_CHARS = {
-      '手板1':   '░',
-      '手板2':   '▒',
-      'P0':      '▓',
-      'P1':      '■',
-      'P2':      '▪',
-      '中试量产': '█',
-    };
-
-    function sc(r, c, v, t) {
-      ws[XLSX.utils.encode_cell({r,c})] = {v: v===undefined?'':v, t: t||'s'};
-    }
-    function sn(r, c, v) { sc(r, c, v, 'n'); }
-
-    let row = 0;
-
-    // ── 第1行：月份合并标题（用重复月名占位，Excel看到后可手动合并）
-    sc(row, 0, '序号');
-    sc(row, 1, '阶段');
-    sc(row, 2, '所属模块');
-    sc(row, 3, '任务名称');
-    sc(row, 4, '启动日期');
-    sc(row, 5, '完成日期');
-    sc(row, 6, '进度%');
-    let lastMonth = '';
-    weeks.forEach((wk, wi) => {
-      const d = parseDate(wk);
-      const mo = d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0');
-      sc(row, FIXED_COLS + wi, mo !== lastMonth ? mo : '');
-      lastMonth = mo;
-    });
-    row++;
-
-    // ── 第2行：周序号（W01, W02...）
-    sc(row, 0, ''); sc(row, 1, ''); sc(row, 2, ''); sc(row, 3, '');
-    sc(row, 4, ''); sc(row, 5, ''); sc(row, 6, '');
-    weeks.forEach((wk, wi) => {
-      const d = parseDate(wk);
-      sc(row, FIXED_COLS + wi, d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0'));
-    });
-    row++;
-
-    // ── 数据行
-    let seq = 0;
-    tasks.forEach(t => {
-      if (!t.start || !t.end) { row++; return; }
-      const isGrp = t.group;
-      if (isGrp) {
-        sc(row, 0, '');
-      } else {
-        seq++;
-        sn(row, 0, seq);
+      function parseDate(s) {
+        if (!s) return null;
+        const p = s.split('-');
+        return new Date(+p[0], +p[1]-1, +p[2]);
       }
-      sc(row, 1, t.phase||'');
-      sc(row, 2, t.module||'');
-      // 任务名：组行保持完整，子任务去掉前缀
-      let dispName = t.name;
-      if (!isGrp && t.name.startsWith(t.module+'_'+t.phase+'_')) {
-        dispName = t.name.slice((t.module+'_'+t.phase+'_').length);
+      function toYMD(d) {
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       }
-      sc(row, 3, dispName);
-      sc(row, 4, t.start);
-      sc(row, 5, t.end);
-      sn(row, 6, t.progress||0);
+      function dayDiff(a, b) {
+        // b - a in days
+        return Math.round((b - a) / 86400000);
+      }
 
-      // 甘特条：判断每周是否在任务区间内
-      const tStart = parseDate(t.start);
-      const tEnd   = parseDate(t.end);
-      const phChar  = PHASE_CHARS[t.phase] || '■';
-      // 组行用不同字符
-      const fillChar = isGrp ? '◆' : phChar;
+      // 所有任务中找最早开始/最晚结束
+      const allTasks = tasks.filter(t => !t.group && t.start && t.end);
+      if (!allTasks.length) return;
+      const allStarts = allTasks.map(t => t.start).sort();
+      const allEnds   = allTasks.map(t => t.end).sort();
+      const gStart    = parseDate(allStarts[0]);
+      const gEnd      = parseDate(allEnds[allEnds.length-1]);
 
-      weeks.forEach((wk, wi) => {
-        const wkStart = parseDate(wk);
-        const wkEnd   = new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
-        // 判断任务与本周是否重叠
-        if (tStart <= wkEnd && tEnd >= wkStart) {
-          // 计算覆盖比例
-          const overlapStart = tStart > wkStart ? tStart : wkStart;
-          const overlapEnd   = tEnd < wkEnd ? tEnd : wkEnd;
-          const overlapDays  = Math.round((overlapEnd - overlapStart)/86400000) + 1;
-          // 进度已完成部分用不同字符
-          const doneRatio = (t.progress||0) / 100;
-          const totalDays = Math.round((tEnd - tStart)/86400000) + 1;
-          const doneDays  = Math.round(totalDays * doneRatio);
-          const doneByNow = Math.round((overlapStart - tStart)/86400000);
-          const bar = doneByNow < doneDays ? '●' : fillChar;
-          sc(row, FIXED_COLS + wi, bar);
-        }
+      // 对齐到当周周一
+      const dow = gStart.getDay();
+      const aligned = new Date(gStart);
+      aligned.setDate(gStart.getDate() - (dow === 0 ? 6 : dow - 1));
+
+      // 收集所有周（周一列表）
+      const weeks = [];
+      const cur = new Date(aligned);
+      while (cur <= gEnd) {
+        weeks.push(new Date(cur));
+        cur.setDate(cur.getDate() + 7);
+      }
+      if (!weeks.length) return;
+
+      const FIXED = 7; // 固定列数（序号/阶段/模块/任务名/开始/结束/进度）
+
+      // 按模块分组，每模块生成一个 Sheet
+      modules.forEach(mod => {
+        const modTasks = tasks.filter(t => t.module === mod.id);
+        if (!modTasks.length) return;
+
+        const ws = ewb.addWorksheet(mod.name.slice(0,28) + '-甘特');
+
+        // 列宽
+        const cols = [
+          {width: 5},  // A 序号
+          {width: 9},  // B 阶段
+          {width: 11}, // C 模块
+          {width: 30}, // D 任务名
+          {width: 12}, // E 启动日期
+          {width: 12}, // F 完成日期
+          {width: 7},  // G 进度%
+        ];
+        weeks.forEach(() => cols.push({width: 4.2}));
+        ws.columns = cols;
+
+        // 冻结前7列+前2行
+        ws.views = [{state:'frozen', xSplit: FIXED, ySplit: 2}];
+
+        // ── 第1行：月份标题
+        const r1 = ws.addRow(['', '', '', '', '', '', '']);
+        r1.height = 16;
+        // 填充月份
+        let lastMo = '';
+        weeks.forEach((wk, wi) => {
+          const mo = wk.getFullYear() + '/' + String(wk.getMonth()+1).padStart(2,'0');
+          const cell = r1.getCell(FIXED + 1 + wi);
+          if (mo !== lastMo) {
+            cell.value = mo;
+            lastMo = mo;
+          }
+          cell.alignment = {horizontal:'center', vertical:'middle'};
+          cell.font = {bold: true, size: 9, color:{argb:'FF37474F'}};
+          cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFE3F2FD'}};
+          cell.border = {bottom:{style:'thin',color:{argb:'FFBBDEFB'}}};
+        });
+        // 固定列表头样式
+        ['序号','阶段','所属模块','任务名称','启动日期','完成日期','进度%'].forEach((h,i) => {
+          const cell = r1.getCell(i+1);
+          cell.value = h;
+          cell.font = {bold:true, size:9, color:{argb:'FFFFFFFF'}};
+          cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF37474F'}};
+          cell.alignment = {horizontal:'center', vertical:'middle'};
+        });
+
+        // ── 第2行：周日期
+        const r2 = ws.addRow(['', '', '', '', '', '', '']);
+        r2.height = 15;
+        weeks.forEach((wk, wi) => {
+          const cell = r2.getCell(FIXED + 1 + wi);
+          cell.value = String(wk.getDate()).padStart(2,'0') + '/' + String(wk.getMonth()+1).padStart(2,'0');
+          cell.alignment = {horizontal:'center', vertical:'middle'};
+          cell.font = {size: 8, color:{argb:'FF546E7A'}};
+          cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFF5F5F5'}};
+          cell.border = {bottom:{style:'thin',color:{argb:'FFBDBDBD'}}};
+        });
+
+        // ── 数据行
+        let seq = 0;
+        modTasks.forEach(t => {
+          const isGrp = t.group;
+          const dispName = (!isGrp && t.name.startsWith(t.module+'_'+t.phase+'_'))
+            ? t.name.slice((t.module+'_'+t.phase+'_').length)
+            : t.name;
+
+          const rowData = [
+            isGrp ? '' : ++seq,
+            t.phase || '',
+            t.module || '',
+            dispName,
+            t.start || '',
+            t.end   || '',
+            isGrp ? '' : (t.progress || 0),
+          ];
+          const row = ws.addRow(rowData);
+          row.height = isGrp ? 18 : 16;
+
+          // 固定列样式
+          const namCell = row.getCell(4);
+          if (isGrp) {
+            namCell.font = {bold:true, size:9};
+            row.getCell(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F5'}};
+            for (let ci=1; ci<=7; ci++) {
+              const cell = row.getCell(ci);
+              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F5'}};
+              cell.font = Object.assign({bold:true, size:9}, cell.font||{});
+            }
+          } else {
+            for (let ci=1; ci<=7; ci++) {
+              row.getCell(ci).font = {size:9};
+            }
+          }
+          // 进度列颜色
+          const pctCell = row.getCell(7);
+          if (!isGrp) {
+            const pct = t.progress || 0;
+            const pctColor = pct >= 100 ? 'FF43A047' : pct >= 50 ? 'FFF4511E' : 'FF9E9E9E';
+            pctCell.font = {size:9, color:{argb:pctColor}, bold: pct>=100};
+          }
+
+          // ── 甘特条
+          if (t.start && t.end) {
+            const tS = parseDate(t.start);
+            const tE = parseDate(t.end);
+            if (!tS || !tE) return;
+            const totalDays = dayDiff(tS, tE) + 1;
+            const doneDays  = Math.round(totalDays * (t.progress||0) / 100);
+            const bgArgb    = PHASE_BG[t.phase]   || DEFAULT_BG;
+            const donArgb   = DONE_BG[t.phase]    || DEFAULT_DONE_BG;
+            const grpArgb   = 'FFB0BEC5'; // 组行用浅灰
+
+            weeks.forEach((wk, wi) => {
+              const wkEnd = new Date(wk); wkEnd.setDate(wk.getDate()+6);
+              // 判断任务与本周是否重叠
+              if (tS > wkEnd || tE < wk) return;
+
+              const cell = row.getCell(FIXED + 1 + wi);
+              // 计算本周已完成/未完成
+              const wkStartClamped = tS > wk ? tS : wk;
+              const daysFromStart  = dayDiff(tS, wkStartClamped);
+              const isDone         = daysFromStart < doneDays;
+              const fillColor      = isGrp ? grpArgb : (isDone ? donArgb : bgArgb);
+
+              cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: fillColor}};
+              // 边框让色块之间有微小分隔
+              cell.border = {
+                left:  {style:'thin', color:{argb:'FFFFFFFF'}},
+                right: {style:'thin', color:{argb:'FFFFFFFF'}},
+              };
+            });
+          }
+        });
+
+        // 今日竖线（用较深边框标注今日列）
+        const todayDate = new Date();
+        todayDate.setHours(0,0,0,0);
+        weeks.forEach((wk, wi) => {
+          const wkEnd = new Date(wk); wkEnd.setDate(wk.getDate()+6);
+          if (todayDate >= wk && todayDate <= wkEnd) {
+            // 在表头行标注
+            const hCell = r1.getCell(FIXED + 1 + wi);
+            hCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEB3B'}};
+            hCell.font = {bold:true, size:9, color:{argb:'FF37474F'}};
+          }
+        });
       });
-      row++;
-    });
 
-    // 设置列宽
-    const colWidths = [4, 8, 10, 28, 11, 11, 6];
-    weeks.forEach(() => colWidths.push(5));
-    ws['!cols'] = colWidths.map(w => ({wch: w}));
-    ws['!ref']  = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:row-1, c:totalCols-1}});
-
-    // 冻结前7列
-    ws['!freeze'] = {xSplit: FIXED_COLS, ySplit: 2, topLeftCell: XLSX.utils.encode_cell({r:2, c:FIXED_COLS})};
-
-    XLSX.utils.book_append_sheet(wb, ws, '甘特图');
+      // 生成 buffer 并下载
+      const buf = await ewb.xlsx.writeBuffer();
+      const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `硬件项目计划甘特图_${TODAY.replace(/-/g,'')}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error('ExcelJS gantt error:', err);
+      alert('彩色甘特图导出失败：' + err.message + '\n（原始Excel已正常导出）');
+    }
   })();
 
-  XLSX.writeFile(wb, `硬件项目计划_${TODAY.replace(/-/g,'')}.xlsx`);
 }
 
 // ═══════════════════════════════════════════════════
