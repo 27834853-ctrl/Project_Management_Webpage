@@ -886,6 +886,17 @@ let modules = [
 // ═══════════════════════════════════════════════════
 const PHASES = ['手板1','手板2','P0','P1','P2','中试量产'];
 
+// 阶段颜色表
+const PHASE_COLORS = {
+  '手板1':   '#1e88e5',  // 蓝
+  '手板2':   '#8e24aa',  // 紫
+  'P0':      '#00897b',  // 青绿
+  'P1':      '#f4511e',  // 橙红
+  'P2':      '#e53935',  // 红
+  '中试量产': '#43a047',  // 绿
+};
+const DEFAULT_PHASE_COLOR = '#546e7a';
+
 // 任务模板 —— 统一用通用任务名，生成时自动拼接「模块_阶段_」前缀
 // 每个阶段模板：{ sub: 任务名后缀, days: 自然日 }
 // 任务模板：days = 自然日（Excel原始数据）
@@ -1417,7 +1428,7 @@ function renderGantt() {
     const isGrp = t.group;
     const sel = t.id === selectedId ? ' selected' : '';
     const mod = modules.find(m=>m.id===t.module);
-    const barColor = mod ? mod.color : '#1e88e5';
+    const barColor = PHASE_COLORS[t.phase] || DEFAULT_PHASE_COLOR;
 
     // 背景格
     let cellsHtml = '';
