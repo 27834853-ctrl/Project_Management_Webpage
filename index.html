@@ -2489,7 +2489,12 @@ function importExcel(input) {
           if (m) return m[1] + '-' + m[2].padStart(2,'0') + '-' + m[3].padStart(2,'0');
           return '';
         }
-        if (v instanceof Date) return fmt(v);
+        if (v instanceof Date) {
+          // 用本地时间取日期，避免 toISOString() UTC 偏移导致差一天
+          return v.getFullYear() + '-' +
+            String(v.getMonth()+1).padStart(2,'0') + '-' +
+            String(v.getDate()).padStart(2,'0');
+        }
         // Excel 整数序列号（基于 1899-12-30 UTC）
         if (typeof v === 'number') {
           const d = new Date((v - 25569) * 86400000);
@@ -2504,7 +2509,7 @@ function importExcel(input) {
       // moduleHint: 如果是模块分表，传入模块ID（任务名是短名，需要拼接前缀匹配）
       // 返回 {updated, added, skipped}
       function importSheet(ws, moduleHint) {
-        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
         if (rows.length < 2) return {updated:0, added:0, skipped:0};
 
         const hdr = rows[0].map(h => String(h).trim());
@@ -2619,7 +2624,7 @@ function importExcel(input) {
       const allSheet = wb.SheetNames.find(n => n === '项目管理');
       if (allSheet) {
         const ws = wb.Sheets[allSheet];
-        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
         if (rows.length >= 2) {
           const hdr = rows[0].map(h=>String(h).trim());
           const modCI = hdr.findIndex(h=>h.includes('所属模块')||h.includes('模块'));
@@ -2653,7 +2658,7 @@ function importExcel(input) {
       let holAdded = 0;
       const holSheet = wb.SheetNames.find(n => n.includes('节假日'));
       if (holSheet) {
-        const hrows = XLSX.utils.sheet_to_json(wb.Sheets[holSheet], {header:1, defval:'', raw:false});
+        const hrows = XLSX.utils.sheet_to_json(wb.Sheets[holSheet], {header:1, defval:'', raw:true});
         for (let ri = 1; ri < hrows.length; ri++) {
           const [hname, offDate, workDate] = hrows[ri];
           const nameStr = String(hname||'').trim();
